@@ -3,7 +3,7 @@
 Dieses Plugin ändert bei neu registrierten Kunden automatisch die Kundenklasse von **4** auf **5**, wenn:
 
 1. eine **VAT / USt-IdNr.** vorhanden ist, und
-2. der Kunde **nicht** von einem gesperrten Referrer (z. B. eBay) stammt.
+2. die E-Mail **nicht** auf `@members.ebay.com` endet.
 
 ## Verhalten
 
@@ -11,18 +11,11 @@ Das Plugin hört auf `AfterContactCreate` und prüft dann:
 
 - `classId === 4`
 - VAT ist in `vatNumber` oder in den Kontaktoptionen vorhanden
-- `referrerId` ist **nicht** in `blockedReferrerIds`
+- E-Mail endet **nicht** auf `@members.ebay.com`
 
 Treffen alle Bedingungen zu, wird `classId` auf `5` gesetzt.
 
-## Konfiguration
+## Hinweise
 
-In `config/config.json` kann die Liste gesperrter Referrer gepflegt werden:
-
-```json
-{
-  "blockedReferrerIds": [2, 11]
-}
-```
-
-> Hinweis: Bitte die Referrer-IDs auf eure plentymarkets-Umgebung abstimmen (eBay-Kanäle können je nach Setup variieren).
+- eBay-Kunden werden über das E-Mail-Muster `@members.ebay.com` ausgeschlossen.
+- Die Ermittlung der E-Mail erfolgt über `contact.email`, `contact.privateEmail`, Event-Daten und als Fallback über Kontaktoptionen.

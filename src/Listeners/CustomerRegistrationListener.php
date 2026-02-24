@@ -4,7 +4,6 @@ namespace B2BClassEdit\Listeners;
 
 use Plenty\Modules\Account\Contact\Contracts\ContactRepositoryContract;
 use Plenty\Modules\Account\Contact\Events\AfterContactCreate;
-use Plenty\Plugin\ConfigRepository;
 
 class CustomerRegistrationListener
 {
@@ -12,8 +11,7 @@ class CustomerRegistrationListener
     private const SOURCE_CLASS_TO = 5;
 
     public function __construct(
-        private readonly ContactRepositoryContract $contactRepository,
-        private readonly ConfigRepository $config
+        private readonly ContactRepositoryContract $contactRepository
     ) {
     }
 
@@ -35,7 +33,7 @@ class CustomerRegistrationListener
             return;
         }
 
-        if (!$this->isShopCustomer($contact, $event)) {
+        if ($this->isEbayCustomer($contact, $event)) {
             return;
         }
 
@@ -91,30 +89,55 @@ class CustomerRegistrationListener
         return false;
     }
 
-    private function isShopCustomer(array $contact, AfterContactCreate $event): bool
+    private function isEbayCustomer(array $contact, AfterContactCreate $event): bool
     {
-        $referrerId = $this->resolveReferrerId($contact, $event);
+        $email = strtolower($this->resolveEmail($contact, $event));
 
-        if ($referrerId === null) {
-            return true;
+        if ($email === '' || !str_contains($email, '@')) {
+            return false;
         }
 
-        $blockedReferrerIds = (array) $this->config->get('B2BClassEdit.blockedReferrerIds', [2, 11]);
-        $blockedReferrerIds = array_map('intval', $blockedReferrerIds);
-
-        return !in_array($referrerId, $blockedReferrerIds, true);
+        return str_ends_with($email, '@members.ebay.com');
     }
 
-    private function resolveReferrerId(array $contact, AfterContactCreate $event): ?int
+    private function resolveEmail(array $contact, AfterContactCreate $event): string
     {
-        if (isset($contact['referrerId'])) {
-            return (int) $contact['referrerId'];
+        $contactEmail = trim((string) ($contact['email'] ?? ''));
+
+        if ($contactEmail !== '') {
+            return $contactEmail;
         }
 
-        if (property_exists($event, 'referrerId') && $event->referrerId !== null) {
-            return (int) $event->referrerId;
+        $privateEmail = trim((string) ($contact['privateEmail'] ?? ''));
+
+        if ($privateEmail !== '') {
+            return $privateEmail;
         }
 
-        return null;
+        if (property_exists($event, 'contact') && is_array($event->contact)) {
+            $eventEmail = trim((string) ($event->contact['email'] ?? ''));
+
+            if ($eventEmail !== '') {
+                return $eventEmail;
+            }
+        }
+
+        if (!isset($contact['options']) || !is_array($contact['options'])) {
+            return '';
+        }
+
+        foreach ($contact['options'] as $option) {
+            if (!is_array($option)) {
+                continue;
+            }
+
+            $value = trim((string) ($option['value'] ?? ''));
+
+            if ($value !== '' && str_contains($value, '@')) {
+                return $value;
+            }
+        }
+
+        return '';
     }
 }

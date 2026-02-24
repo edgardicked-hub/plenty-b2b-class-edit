@@ -190,7 +190,7 @@ class CustomerRegistrationListener
         }
 
         if (is_object($source)) {
-            $objectValues = get_object_vars($source);
+            $objectValues = (array) $source;
 
             return array_key_exists($key, $objectValues) ? $objectValues[$key] : $default;
         }

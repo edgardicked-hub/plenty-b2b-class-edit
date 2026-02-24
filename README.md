@@ -5,19 +5,22 @@ Dieses Plugin ändert bei neu registrierten Kunden automatisch die Kundenklasse,
 1. eine **VAT / USt-IdNr.** vorhanden ist, und
 2. die E-Mail **nicht** auf die konfigurierte eBay-Domain endet (Standard: `@members.ebay.com`).
 
-## Was wurde gefixt?
+## Wo finde ich die Plugin-Konfiguration?
 
-- **PHP-Kompatibilität verbessert**: Listener nutzt keine PHP-8-only Syntax mehr (wichtig für Allowed Calls Parser beim Bereitstellen).
-- **Backend-Konfiguration sichtbar**: `config/config.json` ist jetzt im plentymarkets-Config-Format aufgebaut.
-- **Stabilere Kontaktverarbeitung**: Der Listener verarbeitet Kontaktdaten jetzt sowohl als Array als auch als Objekt. Dadurch greift die Logik auch dann, wenn `findContactById()` ein Objekt liefert.
+Die Einstellungen findest du im plentymarkets Backend in deinem **Plugin-Set**:
 
-## Backend-Konfiguration
+1. **Plugins » Plugin-Set öffnen**
+2. Plugin **B2BClassEdit** auswählen
+3. Bereich **Konfiguration** öffnen
+4. Werte speichern und Plugin-Set erneut bereitstellen
 
-Im Plugin-Backend kannst du folgende Werte setzen:
+## Backend-Konfiguration (jetzt als Dropdown)
 
-- `sourceClassId`: Von welcher Kundenklasse geändert wird (Standard `4`)
-- `targetClassId`: In welche Kundenklasse geändert wird (Standard `5`)
+- `sourceClassId`: **Von Kundenklasse** (Dropdown 1-10, Standard `4`)
+- `targetClassId`: **Zu Kundenklasse** (Dropdown 1-10, Standard `5`)
 - `ebayEmailDomain`: Domain-Muster für eBay-Kunden (Standard `@members.ebay.com`)
+
+> Hinweis: Wenn eure Kundenklassen IDs außerhalb 1-10 nutzen, sag mir kurz die IDs – ich erweitere die Dropdown-Liste direkt.
 
 ## Verhalten
 
@@ -29,20 +32,6 @@ Das Plugin hört auf `AfterContactCreate` und prüft dann:
 
 Treffen alle Bedingungen zu, wird `classId` auf `targetClassId` gesetzt.
 
-## Wichtig für Deployment
+## Technischer Hinweis
 
-Ja: Wenn du die Änderungen bisher nur in einem Feature-Branch hast, musst du den Stand in den Branch bringen, aus dem dein Plugin gebaut/deployed wird (oft `main` oder dein Release-Branch), **dann Plugin neu bauen/ausrollen und in plentymarkets Plugin-Set erneut bereitstellen**.
-
-## Hinweis zu GitHub-Merge-Konflikten
-
-Wenn GitHub in `CustomerRegistrationListener.php` einen Konflikt in `readValue()` zeigt, bitte die Variante **ohne** dynamische Property-Namen behalten (mit Objekt-zu-Array-Cast `(array) $source`), da die Alternative mit `$source->{$key}` im Plugin-Set-Build fehlschlägt.
-
-
-### Konkrete Konflikt-Auflösung (GitHub Web UI)
-
-Wenn die zwei Konflikte angezeigt werden, bitte genau so auflösen:
-
-1. In `README.md` den kompletten Konfliktblock entfernen und den Abschnitt **"Hinweis zu GitHub-Merge-Konflikten"** behalten.
-2. In `CustomerRegistrationListener.php` im `readValue()`-Block die Variante mit Objekt-zu-Array-Cast `(array) $source` behalten und die Variante mit `$source->{$key}` verwerfen.
-
-Danach **Mark as resolved** und **Commit merge** ausführen.
+Die Konfigurationswerte werden robust ausgelesen (mit und ohne Namespace-Präfix), damit die Werte in unterschiedlichen Plugin-Set-Kontexten korrekt greifen.

@@ -65,12 +65,24 @@ class CustomerRegistrationListener
 
     private function getSourceClassId()
     {
-        return (int) $this->config->get('B2BClassEdit.sourceClassId', self::DEFAULT_SOURCE_CLASS_ID);
+        return (int) $this->readConfigValue('sourceClassId', self::DEFAULT_SOURCE_CLASS_ID);
     }
 
     private function getTargetClassId()
     {
-        return (int) $this->config->get('B2BClassEdit.targetClassId', self::DEFAULT_TARGET_CLASS_ID);
+        return (int) $this->readConfigValue('targetClassId', self::DEFAULT_TARGET_CLASS_ID);
+    }
+
+
+    private function readConfigValue($key, $default = null)
+    {
+        $value = $this->config->get('B2BClassEdit.' . $key, null);
+
+        if ($value === null || $value === '') {
+            $value = $this->config->get($key, $default);
+        }
+
+        return $value;
     }
 
     private function extractContactId(AfterContactCreate $event)
@@ -128,7 +140,7 @@ class CustomerRegistrationListener
             return false;
         }
 
-        $ebayDomain = strtolower((string) $this->config->get('B2BClassEdit.ebayEmailDomain', '@members.ebay.com'));
+        $ebayDomain = strtolower((string) $this->readConfigValue('ebayEmailDomain', '@members.ebay.com'));
 
         if ($ebayDomain === '' || strpos($ebayDomain, '@') !== 0) {
             $ebayDomain = '@members.ebay.com';

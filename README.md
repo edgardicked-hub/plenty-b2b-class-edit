@@ -36,3 +36,13 @@ Ja: Wenn du die Änderungen bisher nur in einem Feature-Branch hast, musst du de
 ## Hinweis zu GitHub-Merge-Konflikten
 
 Wenn GitHub in `CustomerRegistrationListener.php` einen Konflikt in `readValue()` zeigt, bitte die Variante **ohne** dynamische Property-Namen behalten (mit `get_object_vars()`), da die Alternative mit `$source->{$key}` im Plugin-Set-Build fehlschlägt.
+
+
+### Konkrete Konflikt-Auflösung (GitHub Web UI)
+
+Wenn die zwei Konflikte angezeigt werden, bitte genau so auflösen:
+
+1. In `README.md` den kompletten Konfliktblock entfernen und den Abschnitt **"Hinweis zu GitHub-Merge-Konflikten"** behalten.
+2. In `CustomerRegistrationListener.php` im `readValue()`-Block die `get_object_vars()`-Variante behalten und die Variante mit `$source->{$key}` verwerfen.
+
+Danach **Mark as resolved** und **Commit merge** ausführen.

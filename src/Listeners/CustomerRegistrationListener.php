@@ -27,7 +27,7 @@ class CustomerRegistrationListener
 
         $contact = $this->contactRepository->findContactById($contactId);
 
-        if (!is_array($contact)) {
+        if (!$this->isValidContactPayload($contact)) {
             return;
         }
 
@@ -46,7 +46,7 @@ class CustomerRegistrationListener
             return;
         }
 
-        $currentClassId = (int) ($contact['classId'] ?? 0);
+        $currentClassId = (int) $this->readValue($contact, 'classId', 0);
 
         if ($currentClassId !== $sourceClassId) {
             return;
@@ -69,36 +69,42 @@ class CustomerRegistrationListener
 
     private function extractContactId(AfterContactCreate $event): ?int
     {
-        if (property_exists($event, 'contactId') && $event->contactId) {
-            return (int) $event->contactId;
+        $eventContactId = $this->readValue($event, 'contactId');
+
+        if ($eventContactId) {
+            return (int) $eventContactId;
         }
 
-        if (property_exists($event, 'contact') && is_array($event->contact) && isset($event->contact['id'])) {
-            return (int) $event->contact['id'];
+        $eventContact = $this->readValue($event, 'contact');
+
+        if ($this->isValidContactPayload($eventContact)) {
+            $contactId = $this->readValue($eventContact, 'id');
+
+            if ($contactId) {
+                return (int) $contactId;
+            }
         }
 
         return null;
     }
 
-    private function hasVatTaxId(array $contact): bool
+    private function hasVatTaxId(mixed $contact): bool
     {
-        $vatNumber = trim((string) ($contact['vatNumber'] ?? ''));
+        $vatNumber = trim((string) $this->readValue($contact, 'vatNumber', ''));
 
         if ($vatNumber !== '') {
             return true;
         }
 
-        if (!isset($contact['options']) || !is_array($contact['options'])) {
+        $options = $this->readValue($contact, 'options');
+
+        if (!is_array($options)) {
             return false;
         }
 
-        foreach ($contact['options'] as $option) {
-            if (!is_array($option)) {
-                continue;
-            }
-
-            $isVatOption = (int) ($option['typeId'] ?? -1) === 6;
-            $value = trim((string) ($option['value'] ?? ''));
+        foreach ($options as $option) {
+            $isVatOption = (int) $this->readValue($option, 'typeId', -1) === 6;
+            $value = trim((string) $this->readValue($option, 'value', ''));
 
             if ($isVatOption && $value !== '') {
                 return true;
@@ -108,7 +114,7 @@ class CustomerRegistrationListener
         return false;
     }
 
-    private function isEbayCustomer(array $contact, AfterContactCreate $event): bool
+    private function isEbayCustomer(mixed $contact, AfterContactCreate $event): bool
     {
         $email = strtolower($this->resolveEmail($contact, $event));
 
@@ -125,38 +131,38 @@ class CustomerRegistrationListener
         return str_ends_with($email, $ebayDomain);
     }
 
-    private function resolveEmail(array $contact, AfterContactCreate $event): string
+    private function resolveEmail(mixed $contact, AfterContactCreate $event): string
     {
-        $contactEmail = trim((string) ($contact['email'] ?? ''));
+        $contactEmail = trim((string) $this->readValue($contact, 'email', ''));
 
         if ($contactEmail !== '') {
             return $contactEmail;
         }
 
-        $privateEmail = trim((string) ($contact['privateEmail'] ?? ''));
+        $privateEmail = trim((string) $this->readValue($contact, 'privateEmail', ''));
 
         if ($privateEmail !== '') {
             return $privateEmail;
         }
 
-        if (property_exists($event, 'contact') && is_array($event->contact)) {
-            $eventEmail = trim((string) ($event->contact['email'] ?? ''));
+        $eventContact = $this->readValue($event, 'contact');
+
+        if ($this->isValidContactPayload($eventContact)) {
+            $eventEmail = trim((string) $this->readValue($eventContact, 'email', ''));
 
             if ($eventEmail !== '') {
                 return $eventEmail;
             }
         }
 
-        if (!isset($contact['options']) || !is_array($contact['options'])) {
+        $options = $this->readValue($contact, 'options');
+
+        if (!is_array($options)) {
             return '';
         }
 
-        foreach ($contact['options'] as $option) {
-            if (!is_array($option)) {
-                continue;
-            }
-
-            $value = trim((string) ($option['value'] ?? ''));
+        foreach ($options as $option) {
+            $value = trim((string) $this->readValue($option, 'value', ''));
 
             if ($value !== '' && str_contains($value, '@')) {
                 return $value;
@@ -164,5 +170,23 @@ class CustomerRegistrationListener
         }
 
         return '';
+    }
+
+    private function isValidContactPayload(mixed $contact): bool
+    {
+        return is_array($contact) || is_object($contact);
+    }
+
+    private function readValue(mixed $source, string $key, mixed $default = null): mixed
+    {
+        if (is_array($source)) {
+            return $source[$key] ?? $default;
+        }
+
+        if (is_object($source) && isset($source->{$key})) {
+            return $source->{$key};
+        }
+
+        return $default;
     }
 }

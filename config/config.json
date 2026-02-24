@@ -1,0 +1,26 @@
+[
+  {
+    "tab": "Allgemein",
+    "key": "sourceClassId",
+    "label": "Von Kundenklasse (ID)",
+    "type": "number",
+    "required": true,
+    "defaultValue": "4"
+  },
+  {
+    "tab": "Allgemein",
+    "key": "targetClassId",
+    "label": "Zu Kundenklasse (ID)",
+    "type": "number",
+    "required": true,
+    "defaultValue": "5"
+  },
+  {
+    "tab": "Allgemein",
+    "key": "ebayEmailDomain",
+    "label": "eBay E-Mail-Domain",
+    "type": "text",
+    "required": true,
+    "defaultValue": "@members.ebay.com"
+  }
+]

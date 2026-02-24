@@ -7,6 +7,7 @@ Dieses Plugin ändert bei neu registrierten Kunden automatisch die Kundenklasse,
 
 ## Was wurde gefixt?
 
+- **PHP-Kompatibilität verbessert**: Listener nutzt keine PHP-8-only Syntax mehr (wichtig für Allowed Calls Parser beim Bereitstellen).
 - **Backend-Konfiguration sichtbar**: `config/config.json` ist jetzt im plentymarkets-Config-Format aufgebaut.
 - **Stabilere Kontaktverarbeitung**: Der Listener verarbeitet Kontaktdaten jetzt sowohl als Array als auch als Objekt. Dadurch greift die Logik auch dann, wenn `findContactById()` ein Objekt liefert.
 

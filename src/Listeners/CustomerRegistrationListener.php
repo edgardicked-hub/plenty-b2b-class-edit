@@ -8,16 +8,22 @@ use Plenty\Plugin\ConfigRepository;
 
 class CustomerRegistrationListener
 {
-    private const DEFAULT_SOURCE_CLASS_ID = 4;
-    private const DEFAULT_TARGET_CLASS_ID = 5;
+    const DEFAULT_SOURCE_CLASS_ID = 4;
+    const DEFAULT_TARGET_CLASS_ID = 5;
 
-    public function __construct(
-        private readonly ContactRepositoryContract $contactRepository,
-        private readonly ConfigRepository $config
-    ) {
+    /** @var ContactRepositoryContract */
+    private $contactRepository;
+
+    /** @var ConfigRepository */
+    private $config;
+
+    public function __construct(ContactRepositoryContract $contactRepository, ConfigRepository $config)
+    {
+        $this->contactRepository = $contactRepository;
+        $this->config = $config;
     }
 
-    public function handle(AfterContactCreate $event): void
+    public function handle(AfterContactCreate $event)
     {
         $contactId = $this->extractContactId($event);
 
@@ -57,17 +63,17 @@ class CustomerRegistrationListener
         ]);
     }
 
-    private function getSourceClassId(): int
+    private function getSourceClassId()
     {
         return (int) $this->config->get('B2BClassEdit.sourceClassId', self::DEFAULT_SOURCE_CLASS_ID);
     }
 
-    private function getTargetClassId(): int
+    private function getTargetClassId()
     {
         return (int) $this->config->get('B2BClassEdit.targetClassId', self::DEFAULT_TARGET_CLASS_ID);
     }
 
-    private function extractContactId(AfterContactCreate $event): ?int
+    private function extractContactId(AfterContactCreate $event)
     {
         $eventContactId = $this->readValue($event, 'contactId');
 
@@ -88,7 +94,7 @@ class CustomerRegistrationListener
         return null;
     }
 
-    private function hasVatTaxId(mixed $contact): bool
+    private function hasVatTaxId($contact)
     {
         $vatNumber = trim((string) $this->readValue($contact, 'vatNumber', ''));
 
@@ -114,24 +120,24 @@ class CustomerRegistrationListener
         return false;
     }
 
-    private function isEbayCustomer(mixed $contact, AfterContactCreate $event): bool
+    private function isEbayCustomer($contact, AfterContactCreate $event)
     {
         $email = strtolower($this->resolveEmail($contact, $event));
 
-        if ($email === '' || !str_contains($email, '@')) {
+        if ($email === '' || strpos($email, '@') === false) {
             return false;
         }
 
         $ebayDomain = strtolower((string) $this->config->get('B2BClassEdit.ebayEmailDomain', '@members.ebay.com'));
 
-        if ($ebayDomain === '' || !str_starts_with($ebayDomain, '@')) {
+        if ($ebayDomain === '' || strpos($ebayDomain, '@') !== 0) {
             $ebayDomain = '@members.ebay.com';
         }
 
-        return str_ends_with($email, $ebayDomain);
+        return $this->endsWith($email, $ebayDomain);
     }
 
-    private function resolveEmail(mixed $contact, AfterContactCreate $event): string
+    private function resolveEmail($contact, AfterContactCreate $event)
     {
         $contactEmail = trim((string) $this->readValue($contact, 'email', ''));
 
@@ -164,7 +170,7 @@ class CustomerRegistrationListener
         foreach ($options as $option) {
             $value = trim((string) $this->readValue($option, 'value', ''));
 
-            if ($value !== '' && str_contains($value, '@')) {
+            if ($value !== '' && strpos($value, '@') !== false) {
                 return $value;
             }
         }
@@ -172,15 +178,15 @@ class CustomerRegistrationListener
         return '';
     }
 
-    private function isValidContactPayload(mixed $contact): bool
+    private function isValidContactPayload($contact)
     {
         return is_array($contact) || is_object($contact);
     }
 
-    private function readValue(mixed $source, string $key, mixed $default = null): mixed
+    private function readValue($source, $key, $default = null)
     {
         if (is_array($source)) {
-            return $source[$key] ?? $default;
+            return array_key_exists($key, $source) ? $source[$key] : $default;
         }
 
         if (is_object($source) && isset($source->{$key})) {
@@ -188,5 +194,21 @@ class CustomerRegistrationListener
         }
 
         return $default;
+    }
+
+    private function endsWith($value, $suffix)
+    {
+        if ($suffix === '') {
+            return true;
+        }
+
+        $valueLength = strlen($value);
+        $suffixLength = strlen($suffix);
+
+        if ($suffixLength > $valueLength) {
+            return false;
+        }
+
+        return substr($value, -$suffixLength) === $suffix;
     }
 }

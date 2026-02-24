@@ -32,3 +32,7 @@ Treffen alle Bedingungen zu, wird `classId` auf `targetClassId` gesetzt.
 ## Wichtig für Deployment
 
 Ja: Wenn du die Änderungen bisher nur in einem Feature-Branch hast, musst du den Stand in den Branch bringen, aus dem dein Plugin gebaut/deployed wird (oft `main` oder dein Release-Branch), **dann Plugin neu bauen/ausrollen und in plentymarkets Plugin-Set erneut bereitstellen**.
+
+## Hinweis zu GitHub-Merge-Konflikten
+
+Wenn GitHub in `CustomerRegistrationListener.php` einen Konflikt in `readValue()` zeigt, bitte die Variante **ohne** dynamische Property-Namen behalten (mit `get_object_vars()`), da die Alternative mit `$source->{$key}` im Plugin-Set-Build fehlschlägt.

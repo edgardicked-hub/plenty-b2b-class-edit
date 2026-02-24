@@ -1,3 +1,5 @@
 {
-  "blockedReferrerIds": [2, 11]
+  "sourceClassId": 4,
+  "targetClassId": 5,
+  "ebayEmailDomain": "@members.ebay.com"
 }

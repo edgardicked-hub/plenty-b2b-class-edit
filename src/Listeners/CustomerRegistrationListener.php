@@ -4,14 +4,16 @@ namespace B2BClassEdit\Listeners;
 
 use Plenty\Modules\Account\Contact\Contracts\ContactRepositoryContract;
 use Plenty\Modules\Account\Contact\Events\AfterContactCreate;
+use Plenty\Plugin\ConfigRepository;
 
 class CustomerRegistrationListener
 {
-    private const SOURCE_CLASS_FROM = 4;
-    private const SOURCE_CLASS_TO = 5;
+    private const DEFAULT_SOURCE_CLASS_ID = 4;
+    private const DEFAULT_TARGET_CLASS_ID = 5;
 
     public function __construct(
-        private readonly ContactRepositoryContract $contactRepository
+        private readonly ContactRepositoryContract $contactRepository,
+        private readonly ConfigRepository $config
     ) {
     }
 
@@ -37,15 +39,32 @@ class CustomerRegistrationListener
             return;
         }
 
+        $sourceClassId = $this->getSourceClassId();
+        $targetClassId = $this->getTargetClassId();
+
+        if ($sourceClassId === $targetClassId) {
+            return;
+        }
+
         $currentClassId = (int) ($contact['classId'] ?? 0);
 
-        if ($currentClassId !== self::SOURCE_CLASS_FROM) {
+        if ($currentClassId !== $sourceClassId) {
             return;
         }
 
         $this->contactRepository->updateContact($contactId, [
-            'classId' => self::SOURCE_CLASS_TO,
+            'classId' => $targetClassId,
         ]);
+    }
+
+    private function getSourceClassId(): int
+    {
+        return (int) $this->config->get('B2BClassEdit.sourceClassId', self::DEFAULT_SOURCE_CLASS_ID);
+    }
+
+    private function getTargetClassId(): int
+    {
+        return (int) $this->config->get('B2BClassEdit.targetClassId', self::DEFAULT_TARGET_CLASS_ID);
     }
 
     private function extractContactId(AfterContactCreate $event): ?int
@@ -97,7 +116,13 @@ class CustomerRegistrationListener
             return false;
         }
 
-        return str_ends_with($email, '@members.ebay.com');
+        $ebayDomain = strtolower((string) $this->config->get('B2BClassEdit.ebayEmailDomain', '@members.ebay.com'));
+
+        if ($ebayDomain === '' || !str_starts_with($ebayDomain, '@')) {
+            $ebayDomain = '@members.ebay.com';
+        }
+
+        return str_ends_with($email, $ebayDomain);
     }
 
     private function resolveEmail(array $contact, AfterContactCreate $event): string

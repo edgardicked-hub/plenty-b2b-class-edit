@@ -1,20 +1,23 @@
 [
   {
+    "tab": "Einstellungen",
     "key": "sourceClassId",
+    "label": "Kundenklasse Quelle (von)",
     "type": "number",
-    "defaultValue": 4,
-    "name": "Ausgangs-Kundenklasse"
+    "defaultValue": 4
   },
   {
+    "tab": "Einstellungen",
     "key": "targetClassId",
+    "label": "Kundenklasse Ziel (nach)",
     "type": "number",
-    "defaultValue": 5,
-    "name": "Ziel-Kundenklasse"
+    "defaultValue": 5
   },
   {
+    "tab": "Einstellungen",
     "key": "ebayEmailDomain",
+    "label": "eBay E-Mail-Domain (Ausschluss)",
     "type": "text",
-    "defaultValue": "@members.ebay.com",
-    "name": "Ebay Mail-Domain"
+    "defaultValue": "@members.ebay.com"
   }
 ]

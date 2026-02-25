@@ -10,7 +10,7 @@ Dieses Plugin ändert bei neu registrierten Kunden automatisch die Kundenklasse,
 In plentymarkets wird die Plugin-Konfiguration aus der Datei **`config.json` im Plugin-Root** geladen.
 
 - Diese Datei war bisher nicht im Root vorhanden.
-- Jetzt ist die Konfiguration unter `config.json` hinterlegt (inkl. korrekter `key`-Felder).
+- Jetzt ist die Konfiguration unter `config.json` hinterlegt (mit `tab` + `label`, damit die Felder im Backend klar beschriftet sind).
 - Zusätzlich bleibt `config/config.json` als Kopie enthalten, damit bestehende Branches/Setups nicht brechen.
 
 ## Konfiguration im Backend
@@ -25,9 +25,9 @@ Pfad:
 
 Verfügbare Felder:
 
-- `sourceClassId` (Standard `4`)
-- `targetClassId` (Standard `5`)
-- `ebayEmailDomain` (Standard `@members.ebay.com`)
+- **Kundenklasse Quelle (von)** = `sourceClassId` (Standard `4`)
+- **Kundenklasse Ziel (nach)** = `targetClassId` (Standard `5`)
+- **eBay E-Mail-Domain (Ausschluss)** = `ebayEmailDomain` (Standard `@members.ebay.com`)
 
 ## Verhalten
 

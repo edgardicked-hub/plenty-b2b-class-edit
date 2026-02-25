@@ -236,12 +236,6 @@ class CustomerRegistrationListener
         }
 
         if (is_object($source)) {
-            $getterValue = $this->readValueFromGetter($source, $key, null);
-
-            if ($getterValue !== null) {
-                return $getterValue;
-            }
-
             $objectValues = (array) $source;
 
             if (array_key_exists($key, $objectValues)) {
@@ -253,7 +247,7 @@ class CustomerRegistrationListener
                     continue;
                 }
 
-                // private/protected properties appear as "Classproperty" or "*property"
+                // private/protected properties are matched by property-name suffix
                 if (substr($objectKey, -strlen($key)) === $key) {
                     return $value;
                 }
@@ -263,66 +257,6 @@ class CustomerRegistrationListener
         return $default;
     }
 
-    private function readValueFromGetter($source, $key, $default = null)
-    {
-        if ($key === 'contactId' && method_exists($source, 'getContactId')) {
-            return $source->getContactId();
-        }
-
-        if ($key === 'contact' && method_exists($source, 'getContact')) {
-            return $source->getContact();
-        }
-
-        if ($key === 'id' && method_exists($source, 'getId')) {
-            return $source->getId();
-        }
-
-        if ($key === 'classId' && method_exists($source, 'getClassId')) {
-            return $source->getClassId();
-        }
-
-        if ($key === 'email' && method_exists($source, 'getEmail')) {
-            return $source->getEmail();
-        }
-
-        if ($key === 'privateEmail' && method_exists($source, 'getPrivateEmail')) {
-            return $source->getPrivateEmail();
-        }
-
-        if ($key === 'vatNumber' && method_exists($source, 'getVatNumber')) {
-            return $source->getVatNumber();
-        }
-
-        if ($key === 'taxIdNumber' && method_exists($source, 'getTaxIdNumber')) {
-            return $source->getTaxIdNumber();
-        }
-
-        if ($key === 'options' && method_exists($source, 'getOptions')) {
-            return $source->getOptions();
-        }
-
-        if ($key === 'typeId' && method_exists($source, 'getTypeId')) {
-            return $source->getTypeId();
-        }
-
-        if ($key === 'subTypeId' && method_exists($source, 'getSubTypeId')) {
-            return $source->getSubTypeId();
-        }
-
-        if ($key === 'type' && method_exists($source, 'getType')) {
-            return $source->getType();
-        }
-
-        if ($key === 'subType' && method_exists($source, 'getSubType')) {
-            return $source->getSubType();
-        }
-
-        if ($key === 'value' && method_exists($source, 'getValue')) {
-            return $source->getValue();
-        }
-
-        return $default;
-    }
 
     private function containsAny($value, $needles)
     {

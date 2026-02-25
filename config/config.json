@@ -2,49 +2,25 @@
   {
     "tab": "Allgemein",
     "key": "sourceClassId",
-    "label": "Von Kundenklasse",
-    "type": "select",
-    "required": true,
-    "defaultValue": "4",
-    "options": [
-      { "caption": "1", "value": "1" },
-      { "caption": "2", "value": "2" },
-      { "caption": "3", "value": "3" },
-      { "caption": "4", "value": "4" },
-      { "caption": "5", "value": "5" },
-      { "caption": "6", "value": "6" },
-      { "caption": "7", "value": "7" },
-      { "caption": "8", "value": "8" },
-      { "caption": "9", "value": "9" },
-      { "caption": "10", "value": "10" }
-    ]
+    "name": "Von Kundenklasse (ID)",
+    "description": "Ausgangs-Kundenklasse, die beim Event geprüft wird.",
+    "type": "text",
+    "defaultValue": "4"
   },
   {
     "tab": "Allgemein",
     "key": "targetClassId",
-    "label": "Zu Kundenklasse",
-    "type": "select",
-    "required": true,
-    "defaultValue": "5",
-    "options": [
-      { "caption": "1", "value": "1" },
-      { "caption": "2", "value": "2" },
-      { "caption": "3", "value": "3" },
-      { "caption": "4", "value": "4" },
-      { "caption": "5", "value": "5" },
-      { "caption": "6", "value": "6" },
-      { "caption": "7", "value": "7" },
-      { "caption": "8", "value": "8" },
-      { "caption": "9", "value": "9" },
-      { "caption": "10", "value": "10" }
-    ]
+    "name": "Zu Kundenklasse (ID)",
+    "description": "Ziel-Kundenklasse, auf die umgestellt wird.",
+    "type": "text",
+    "defaultValue": "5"
   },
   {
     "tab": "Allgemein",
     "key": "ebayEmailDomain",
-    "label": "eBay E-Mail-Domain",
+    "name": "eBay E-Mail-Domain",
+    "description": "Kunden mit dieser Domain werden von der Umstellung ausgeschlossen.",
     "type": "text",
-    "required": true,
     "defaultValue": "@members.ebay.com"
   }
 ]

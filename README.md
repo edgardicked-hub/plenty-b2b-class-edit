@@ -14,13 +14,13 @@ Die Einstellungen findest du im plentymarkets Backend in deinem **Plugin-Set**:
 3. Bereich **Konfiguration** öffnen
 4. Werte speichern und Plugin-Set erneut bereitstellen
 
-## Backend-Konfiguration (jetzt als Dropdown)
+## Verfügbare Felder
 
-- `sourceClassId`: **Von Kundenklasse** (Dropdown 1-10, Standard `4`)
-- `targetClassId`: **Zu Kundenklasse** (Dropdown 1-10, Standard `5`)
-- `ebayEmailDomain`: Domain-Muster für eBay-Kunden (Standard `@members.ebay.com`)
+- `sourceClassId` (Textfeld): Von welcher Kundenklasse geändert wird (Standard `4`)
+- `targetClassId` (Textfeld): In welche Kundenklasse geändert wird (Standard `5`)
+- `ebayEmailDomain` (Textfeld): Domain-Muster für eBay-Kunden (Standard `@members.ebay.com`)
 
-> Hinweis: Wenn eure Kundenklassen IDs außerhalb 1-10 nutzen, sag mir kurz die IDs – ich erweitere die Dropdown-Liste direkt.
+> Wichtig: plentymarkets liest die Werte als Text ein. IDs bitte numerisch eintragen (z. B. `4` und `5`).
 
 ## Verhalten
 

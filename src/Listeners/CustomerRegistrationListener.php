@@ -53,9 +53,11 @@ class CustomerRegistrationListener
 
         $currentClassId = (int) $this->readValue($contact, 'classId', 0);
 
-        // In manchen Registrierungsabläufen ist classId beim Create-Event noch nicht gesetzt (0).
-        // Dann nicht früh abbrechen, sondern trotzdem auf die Zielklasse schreiben.
-        if ($currentClassId !== 0 && $currentClassId !== $sourceClassId) {
+        if ($currentClassId === $targetClassId) {
+            return;
+        }
+
+        if ($currentClassId !== $sourceClassId) {
             return;
         }
 

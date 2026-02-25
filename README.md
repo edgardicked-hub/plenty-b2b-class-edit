@@ -31,12 +31,12 @@ Verfügbare Felder:
 
 ## Verhalten
 
-Das Plugin hört auf `AfterContactCreate` **und** `AfterContactUpdate` und prüft dann:
+Das Plugin hört auf `AfterContactCreate` und prüft dann:
 
 - `classId === sourceClassId`
 - VAT ist in `vatNumber` oder in den Kontaktoptionen vorhanden
 - E-Mail endet **nicht** auf `ebayEmailDomain`
-- Falls `classId` beim initialen Create-Event noch `0`/leer ist, wird der Wechsel trotzdem durchgeführt (typischer Timing-Fall bei Registrierung).
+- Es wird nur gewechselt, wenn die aktuelle Klasse exakt der konfigurierten Quellklasse entspricht (`sourceClassId`).
 
 Treffen alle Bedingungen zu, wird `classId` auf `targetClassId` gesetzt.
 

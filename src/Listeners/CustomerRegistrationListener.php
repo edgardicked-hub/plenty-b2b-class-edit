@@ -122,6 +122,12 @@ class CustomerRegistrationListener
             return true;
         }
 
+        // Fallback: manche Registrierungsstrecken liefern die USt-IdNr. in verschachtelten
+        // Company/Address-Strukturen. Darum zusätzlich rekursiv nach VAT-Feldern suchen.
+        if ($this->hasVatTaxIdInPayload($contact, 0) || $this->hasVatTaxIdInPayload($eventContact, 0) || $this->hasVatTaxIdInPayload($event, 0)) {
+            return true;
+        }
+
         return false;
     }
 
@@ -164,6 +170,58 @@ class CustomerRegistrationListener
             if ($this->containsAny($type, array('vat', 'ust', 'tax')) || $this->containsAny($subType, array('vat', 'ust', 'tax'))) {
                 return true;
             }
+        }
+
+        return false;
+    }
+
+    private function hasVatTaxIdInPayload($payload, $depth)
+    {
+        if ($depth > 6 || $payload === null) {
+            return false;
+        }
+
+        if (is_array($payload)) {
+            foreach ($payload as $key => $value) {
+                if ($this->isVatKeyWithValue($key, $value)) {
+                    return true;
+                }
+
+                if (is_array($value) || is_object($value)) {
+                    if ($this->hasVatTaxIdInPayload($value, $depth + 1)) {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        if (is_object($payload)) {
+            return $this->hasVatTaxIdInPayload((array) $payload, $depth + 1);
+        }
+
+        return false;
+    }
+
+    private function isVatKeyWithValue($key, $value)
+    {
+        if (!is_string($key)) {
+            return false;
+        }
+
+        $normalizedKey = strtolower($key);
+
+        if (!$this->containsAny($normalizedKey, array('vat', 'ust', 'taxid'))) {
+            return false;
+        }
+
+        if (is_string($value)) {
+            return trim($value) !== '';
+        }
+
+        if (is_int($value) || is_float($value)) {
+            return (string) $value !== '';
         }
 
         return false;

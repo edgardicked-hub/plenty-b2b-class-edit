@@ -3,7 +3,6 @@
 namespace B2BClassEdit\Listeners;
 
 use Plenty\Modules\Account\Contact\Contracts\ContactRepositoryContract;
-use Plenty\Modules\Account\Contact\Events\AfterContactCreate;
 use Plenty\Plugin\ConfigRepository;
 
 class CustomerRegistrationListener
@@ -23,7 +22,7 @@ class CustomerRegistrationListener
         $this->config = $config;
     }
 
-    public function handle(AfterContactCreate $event)
+    public function handle($event)
     {
         $contactId = $this->extractContactId($event);
 
@@ -54,7 +53,9 @@ class CustomerRegistrationListener
 
         $currentClassId = (int) $this->readValue($contact, 'classId', 0);
 
-        if ($currentClassId !== $sourceClassId) {
+        // In manchen Registrierungsabläufen ist classId beim Create-Event noch nicht gesetzt (0).
+        // Dann nicht früh abbrechen, sondern trotzdem auf die Zielklasse schreiben.
+        if ($currentClassId !== 0 && $currentClassId !== $sourceClassId) {
             return;
         }
 
@@ -86,7 +87,7 @@ class CustomerRegistrationListener
         return $value;
     }
 
-    private function extractContactId(AfterContactCreate $event)
+    private function extractContactId($event)
     {
         $eventContactId = $this->readValue($event, 'contactId');
 
@@ -107,7 +108,7 @@ class CustomerRegistrationListener
         return null;
     }
 
-    private function hasVatTaxId($contact, AfterContactCreate $event)
+    private function hasVatTaxId($contact, $event)
     {
         if ($this->hasVatTaxIdInContact($contact)) {
             return true;
@@ -166,7 +167,7 @@ class CustomerRegistrationListener
         return false;
     }
 
-    private function isEbayCustomer($contact, AfterContactCreate $event)
+    private function isEbayCustomer($contact, $event)
     {
         $email = strtolower($this->resolveEmail($contact, $event));
 
@@ -183,7 +184,7 @@ class CustomerRegistrationListener
         return $this->endsWith($email, $ebayDomain);
     }
 
-    private function resolveEmail($contact, AfterContactCreate $event)
+    private function resolveEmail($contact, $event)
     {
         $contactEmail = trim((string) $this->readValue($contact, 'email', ''));
 

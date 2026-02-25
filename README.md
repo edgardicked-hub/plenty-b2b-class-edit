@@ -45,3 +45,4 @@ Falls die Klasse trotz USt-IdNr. nicht gewechselt wurde, enthält dieses Plugin 
 
 - Das Klassen-Update nutzt die korrekte Signatur `updateContact(array $data, int $contactId)`.
 - Die USt-IdNr.-Prüfung liest VAT nicht nur aus dem geladenen Kontakt, sondern zusätzlich auch aus dem `AfterContactCreate`-Event (inkl. Optionen), falls Werte beim ersten Read noch nicht vollständig im Kontaktobjekt stehen.
+- Event- und Kontaktwerte werden jetzt robuster gelesen (Getter wie `getContactId()` / `getContact()` plus private/protected Objektfelder), damit die Logik auch bei Objekt-Payloads zuverlässig greift.

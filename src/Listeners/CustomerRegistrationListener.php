@@ -236,9 +236,42 @@ class CustomerRegistrationListener
         }
 
         if (is_object($source)) {
+            $getterValue = $this->readValueFromGetter($source, $key, null);
+
+            if ($getterValue !== null) {
+                return $getterValue;
+            }
+
             $objectValues = (array) $source;
 
-            return array_key_exists($key, $objectValues) ? $objectValues[$key] : $default;
+            if (array_key_exists($key, $objectValues)) {
+                return $objectValues[$key];
+            }
+
+            foreach ($objectValues as $objectKey => $value) {
+                if (!is_string($objectKey)) {
+                    continue;
+                }
+
+                // private/protected properties appear as "Classproperty" or "*property"
+                if (substr($objectKey, -strlen($key)) === $key) {
+                    return $value;
+                }
+            }
+        }
+
+        return $default;
+    }
+
+    private function readValueFromGetter($source, $key, $default = null)
+    {
+        $normalizedKey = ucfirst($key);
+        $getterNames = array('get' . $normalizedKey, 'is' . $normalizedKey);
+
+        foreach ($getterNames as $getterName) {
+            if (method_exists($source, $getterName)) {
+                return $source->{$getterName}();
+            }
         }
 
         return $default;

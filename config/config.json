@@ -1,25 +1,16 @@
 [
   {
-    "tab": "Allgemein",
-    "key": "sourceClassId",
-    "name": "Von Kundenklasse (ID)",
-    "description": "Ausgangs-Kundenklasse, die beim Event geprüft wird.",
+    "name": "sourceClassId",
     "type": "text",
     "defaultValue": "4"
   },
   {
-    "tab": "Allgemein",
-    "key": "targetClassId",
-    "name": "Zu Kundenklasse (ID)",
-    "description": "Ziel-Kundenklasse, auf die umgestellt wird.",
+    "name": "targetClassId",
     "type": "text",
     "defaultValue": "5"
   },
   {
-    "tab": "Allgemein",
-    "key": "ebayEmailDomain",
-    "name": "eBay E-Mail-Domain",
-    "description": "Kunden mit dieser Domain werden von der Umstellung ausgeschlossen.",
+    "name": "ebayEmailDomain",
     "type": "text",
     "defaultValue": "@members.ebay.com"
   }

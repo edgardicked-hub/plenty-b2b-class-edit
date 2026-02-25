@@ -5,22 +5,20 @@ Dieses Plugin ändert bei neu registrierten Kunden automatisch die Kundenklasse,
 1. eine **VAT / USt-IdNr.** vorhanden ist, und
 2. die E-Mail **nicht** auf die konfigurierte eBay-Domain endet (Standard: `@members.ebay.com`).
 
-## Wo finde ich die Plugin-Konfiguration?
+## Konfiguration
 
-Die Einstellungen findest du im plentymarkets Backend in deinem **Plugin-Set**:
+Wenn in plentymarkets bisher „keine Konfigurationsfelder verfügbar“ angezeigt wurde, nutzt dieses Plugin jetzt ein **minimal-kompatibles Config-Schema** mit 3 Textfeldern:
+
+- `sourceClassId` (Standard `4`)
+- `targetClassId` (Standard `5`)
+- `ebayEmailDomain` (Standard `@members.ebay.com`)
+
+Pfad im Backend:
 
 1. **Plugins » Plugin-Set öffnen**
-2. Plugin **B2BClassEdit** auswählen
-3. Bereich **Konfiguration** öffnen
+2. Plugin **B2BClassEdit**
+3. **Konfiguration**
 4. Werte speichern und Plugin-Set erneut bereitstellen
-
-## Verfügbare Felder
-
-- `sourceClassId` (Textfeld): Von welcher Kundenklasse geändert wird (Standard `4`)
-- `targetClassId` (Textfeld): In welche Kundenklasse geändert wird (Standard `5`)
-- `ebayEmailDomain` (Textfeld): Domain-Muster für eBay-Kunden (Standard `@members.ebay.com`)
-
-> Wichtig: plentymarkets liest die Werte als Text ein. IDs bitte numerisch eintragen (z. B. `4` und `5`).
 
 ## Verhalten
 
@@ -31,7 +29,3 @@ Das Plugin hört auf `AfterContactCreate` und prüft dann:
 - E-Mail endet **nicht** auf `ebayEmailDomain`
 
 Treffen alle Bedingungen zu, wird `classId` auf `targetClassId` gesetzt.
-
-## Technischer Hinweis
-
-Die Konfigurationswerte werden robust ausgelesen (mit und ohne Namespace-Präfix), damit die Werte in unterschiedlichen Plugin-Set-Kontexten korrekt greifen.

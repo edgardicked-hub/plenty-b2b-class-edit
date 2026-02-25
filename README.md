@@ -38,3 +38,10 @@ Das Plugin hört auf `AfterContactCreate` und prüft dann:
 - E-Mail endet **nicht** auf `ebayEmailDomain`
 
 Treffen alle Bedingungen zu, wird `classId` auf `targetClassId` gesetzt.
+
+## Hinweis zum letzten Funktionsfix
+
+Falls die Klasse trotz USt-IdNr. nicht gewechselt wurde, enthält dieses Plugin jetzt zwei wichtige Korrekturen:
+
+- Das Klassen-Update nutzt die korrekte Signatur `updateContact(array $data, int $contactId)`.
+- Die USt-IdNr.-Prüfung liest VAT nicht nur aus dem geladenen Kontakt, sondern zusätzlich auch aus dem `AfterContactCreate`-Event (inkl. Optionen), falls Werte beim ersten Read noch nicht vollständig im Kontaktobjekt stehen.

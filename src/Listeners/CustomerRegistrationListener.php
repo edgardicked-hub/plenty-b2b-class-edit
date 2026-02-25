@@ -37,7 +37,7 @@ class CustomerRegistrationListener
             return;
         }
 
-        if (!$this->hasVatTaxId($contact)) {
+        if (!$this->hasVatTaxId($contact, $event)) {
             return;
         }
 
@@ -58,9 +58,10 @@ class CustomerRegistrationListener
             return;
         }
 
-        $this->contactRepository->updateContact($contactId, [
+        // plentymarkets ContactRepositoryContract erwartet: updateContact(array $data, int $contactId)
+        $this->contactRepository->updateContact([
             'classId' => $targetClassId,
-        ]);
+        ], $contactId);
     }
 
     private function getSourceClassId()
@@ -106,11 +107,32 @@ class CustomerRegistrationListener
         return null;
     }
 
-    private function hasVatTaxId($contact)
+    private function hasVatTaxId($contact, AfterContactCreate $event)
+    {
+        if ($this->hasVatTaxIdInContact($contact)) {
+            return true;
+        }
+
+        $eventContact = $this->readValue($event, 'contact');
+
+        if ($this->isValidContactPayload($eventContact) && $this->hasVatTaxIdInContact($eventContact)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private function hasVatTaxIdInContact($contact)
     {
         $vatNumber = trim((string) $this->readValue($contact, 'vatNumber', ''));
 
         if ($vatNumber !== '') {
+            return true;
+        }
+
+        $taxIdNumber = trim((string) $this->readValue($contact, 'taxIdNumber', ''));
+
+        if ($taxIdNumber !== '') {
             return true;
         }
 
@@ -121,10 +143,22 @@ class CustomerRegistrationListener
         }
 
         foreach ($options as $option) {
-            $isVatOption = (int) $this->readValue($option, 'typeId', -1) === 6;
             $value = trim((string) $this->readValue($option, 'value', ''));
 
-            if ($isVatOption && $value !== '') {
+            if ($value === '') {
+                continue;
+            }
+
+            $typeId = (int) $this->readValue($option, 'typeId', -1);
+            $subTypeId = (int) $this->readValue($option, 'subTypeId', -1);
+            $type = strtolower(trim((string) $this->readValue($option, 'type', '')));
+            $subType = strtolower(trim((string) $this->readValue($option, 'subType', '')));
+
+            if ($typeId === 6 || $subTypeId === 6) {
+                return true;
+            }
+
+            if ($this->containsAny($type, array('vat', 'ust', 'tax')) || $this->containsAny($subType, array('vat', 'ust', 'tax'))) {
                 return true;
             }
         }
@@ -208,6 +242,17 @@ class CustomerRegistrationListener
         }
 
         return $default;
+    }
+
+    private function containsAny($value, $needles)
+    {
+        foreach ($needles as $needle) {
+            if ($needle !== '' && strpos($value, $needle) !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function endsWith($value, $suffix)

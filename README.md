@@ -31,7 +31,7 @@ Verfügbare Felder:
 
 ## Verhalten
 
-Das Plugin hört auf `AfterContactCreate` und prüft dann:
+Das Plugin hört auf `AfterContactCreate` und `AfterContactUpdate` und prüft dann:
 
 - `classId === sourceClassId`
 - VAT ist in `vatNumber`/`taxIdNumber` vorhanden **oder** in verknüpften `accounts` / `addresses` (inkl. Address-Option `typeId = 1`)
@@ -48,4 +48,5 @@ Falls die Klasse trotz USt-IdNr. nicht gewechselt wurde, enthält dieses Plugin 
 - Die USt-IdNr.-Prüfung liest VAT nicht nur aus dem geladenen Kontakt, sondern zusätzlich auch aus dem `AfterContactCreate`-Event (inkl. Optionen), falls Werte beim ersten Read noch nicht vollständig im Kontaktobjekt stehen.
 - Zusätzlich wird rekursiv in verschachtelten Event-/Kontakt-Payloads nach VAT/USt-Feldern gesucht (z. B. Company/Address-Strukturen), falls die USt-IdNr. nicht direkt in `contact.vatNumber` liegt.
 - Der Listener versucht den Kontakt zusätzlich mit Relations (`accounts`, `addresses`) nachzuladen, damit USt-Daten aus Firmen-/Adresskontexten zuverlässig erkannt werden.
+- Für B2BShop-/Custom-Registrierungen wird die Kontakt-ID notfalls rekursiv aus dem Event-Payload gelesen, wenn sie nicht direkt als `contactId` verfügbar ist.
 - Event- und Kontaktwerte werden kompatibel ohne verbotene Funktionsaufrufe gelesen (Array + Objekt-Cast mit Fallback auf Property-Suffix), damit Allowed-Calls-Checks im Build nicht blockieren.

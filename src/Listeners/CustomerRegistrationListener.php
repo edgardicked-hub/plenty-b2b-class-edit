@@ -108,6 +108,48 @@ class CustomerRegistrationListener
             }
         }
 
+        // B2BShop/andere Flows liefern die ID teils nur verschachtelt im Event-Payload.
+        $payloadContactId = $this->findFirstIntByKeys($event, array('contactId', 'id'));
+
+        if ($payloadContactId !== null) {
+            return $payloadContactId;
+        }
+
+        return null;
+    }
+
+    private function findFirstIntByKeys($payload, $keys, $depth = 0)
+    {
+        if ($depth > 6 || $payload === null) {
+            return null;
+        }
+
+        if (is_object($payload)) {
+            $payload = (array) $payload;
+        }
+
+        if (!is_array($payload)) {
+            return null;
+        }
+
+        foreach ($payload as $key => $value) {
+            $normalizedKey = is_string($key) ? strtolower($key) : '';
+
+            foreach ($keys as $wantedKey) {
+                if ($normalizedKey === strtolower($wantedKey) && (int) $value > 0) {
+                    return (int) $value;
+                }
+            }
+
+            if (is_array($value) || is_object($value)) {
+                $nested = $this->findFirstIntByKeys($value, $keys, $depth + 1);
+
+                if ($nested !== null) {
+                    return $nested;
+                }
+            }
+        }
+
         return null;
     }
 

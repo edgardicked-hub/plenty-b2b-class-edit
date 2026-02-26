@@ -30,6 +30,7 @@ Verfügbare Felder:
 - **eBay E-Mail-Domain (Ausschluss)** = `ebayEmailDomain` (Standard `@members.ebay.com`)
 - **API Benutzername** = `apiUsername` (optional)
 - **API Passwort** = `apiPassword` (optional)
+- **API Base-URL** = `apiBaseUrl` (optional, z. B. `https://deinshop.tld`)
 
 ## Verhalten
 
@@ -77,6 +78,14 @@ Falls euer Registrierungsflow (z. B. PlentyLions B2BShop) die Kontakt-Events and
 - Beispiel: `POST /rest/b2b-class-edit/switch/12345`
 
 Die Route ruft intern dieselbe Listener-Logik auf und schreibt weiterhin die Diagnose-Logs. So kann eure App den Wechsel gezielt nach erfolgreicher Registrierung anstoßen.
+
+Warum bisher keine URL im Plugin nötig war:
+- Die REST-Route ist **intern** im Plenty-System registriert (`/rest/b2b-class-edit/switch/{contactId}`).
+- Viele Plugins brauchen eine URL, weil sie als API-**Client** zu einem externen Dienst sprechen.
+
+Damit es für euch trotzdem klar konfigurierbar ist, gibt es jetzt optional `apiBaseUrl`.
+Damit könnt ihr in der Doku/Integration eine vollständige Ziel-URL bilden:
+- `{apiBaseUrl}/rest/b2b-class-edit/switch/{contactId}`
 
 Wenn `apiUsername`/`apiPassword` in der Plugin-Konfiguration gesetzt sind, müssen diese Werte im POST-Request mitgesendet werden:
 

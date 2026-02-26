@@ -33,5 +33,12 @@
     "label": "API Passwort",
     "type": "text",
     "defaultValue": ""
+  },
+  {
+    "tab": "Einstellungen",
+    "key": "apiBaseUrl",
+    "label": "API Base-URL (optional)",
+    "type": "text",
+    "defaultValue": ""
   }
 ]

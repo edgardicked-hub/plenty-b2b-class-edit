@@ -204,11 +204,7 @@ class CustomerRegistrationListener
             return true;
         }
 
-        $options = $this->readValue($contact, 'options');
-
-        if (!is_array($options)) {
-            return false;
-        }
+        $options = $this->asIterable($this->readValue($contact, 'options'));
 
         foreach ($options as $option) {
             $value = trim((string) $this->readValue($option, 'value', ''));
@@ -236,11 +232,7 @@ class CustomerRegistrationListener
 
     private function hasVatTaxIdInAccounts($contact)
     {
-        $accounts = $this->readValue($contact, 'accounts');
-
-        if (!is_array($accounts)) {
-            return false;
-        }
+        $accounts = $this->asIterable($this->readValue($contact, 'accounts'));
 
         foreach ($accounts as $account) {
             $taxIdNumber = trim((string) $this->readValue($account, 'taxIdNumber', ''));
@@ -261,11 +253,7 @@ class CustomerRegistrationListener
 
     private function hasVatTaxIdInAddresses($contact)
     {
-        $addresses = $this->readValue($contact, 'addresses');
-
-        if (!is_array($addresses)) {
-            return false;
-        }
+        $addresses = $this->asIterable($this->readValue($contact, 'addresses'));
 
         foreach ($addresses as $address) {
             $taxIdNumber = trim((string) $this->readValue($address, 'taxIdNumber', ''));
@@ -280,11 +268,7 @@ class CustomerRegistrationListener
                 return true;
             }
 
-            $options = $this->readValue($address, 'options');
-
-            if (!is_array($options)) {
-                continue;
-            }
+            $options = $this->asIterable($this->readValue($address, 'options'));
 
             foreach ($options as $option) {
                 $typeId = (int) $this->readValue($option, 'typeId', -1);
@@ -303,7 +287,7 @@ class CustomerRegistrationListener
     private function loadContactWithRelations($contactId, $fallbackContact)
     {
         try {
-            $contactWithRelations = $this->contactRepository->findContactById($contactId, array('accounts', 'addresses'));
+            $contactWithRelations = $this->contactRepository->findContactById($contactId, array('accounts', 'addresses', 'options'));
 
             if ($this->isValidContactPayload($contactWithRelations)) {
                 return $contactWithRelations;
@@ -408,11 +392,7 @@ class CustomerRegistrationListener
             }
         }
 
-        $options = $this->readValue($contact, 'options');
-
-        if (!is_array($options)) {
-            return '';
-        }
+        $options = $this->asIterable($this->readValue($contact, 'options'));
 
         foreach ($options as $option) {
             $value = trim((string) $this->readValue($option, 'value', ''));
@@ -458,6 +438,33 @@ class CustomerRegistrationListener
         return $default;
     }
 
+
+    private function asIterable($value)
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if (is_object($value)) {
+            $items = array();
+
+            foreach ($value as $itemKey => $itemValue) {
+                $items[$itemKey] = $itemValue;
+            }
+
+            if (!empty($items)) {
+                return $items;
+            }
+
+            $casted = (array) $value;
+
+            if (is_array($casted)) {
+                return $casted;
+            }
+        }
+
+        return array();
+    }
 
     private function containsAny($value, $needles)
     {

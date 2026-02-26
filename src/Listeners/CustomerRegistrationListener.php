@@ -58,39 +58,9 @@ class CustomerRegistrationListener
             return;
         }
 
-        // In einigen Registrierungs-Flows ist classId beim Create-Event noch 0.
-        // Dann trotzdem auf Zielklasse wechseln, wenn alle anderen Bedingungen erfüllt sind.
-        if ($currentClassId !== 0 && $currentClassId !== $sourceClassId) {
-            return;
-        }
-
-        // Gewünschte Verzögerung: 15 Sekunden warten, damit der Kontakt inkl. Relationen
-        // im Registrierungsprozess vollständig angelegt wurde.
-        sleep(15);
-
-        // Kontakt nach der Wartezeit neu laden und Bedingungen erneut prüfen.
-        $delayedContact = $this->contactRepository->findContactById($contactId);
-        $delayedContact = $this->loadContactWithRelations($contactId, $delayedContact);
-
-        if (!$this->isValidContactPayload($delayedContact)) {
-            return;
-        }
-
-        if (!$this->hasVatTaxId($delayedContact, $event)) {
-            return;
-        }
-
-        if ($this->isEbayCustomer($delayedContact, $event)) {
-            return;
-        }
-
-        $delayedClassId = (int) $this->readValue($delayedContact, 'classId', 0);
-
-        if ($delayedClassId === $targetClassId) {
-            return;
-        }
-
-        if ($delayedClassId !== 0 && $delayedClassId !== $sourceClassId) {
+        // Im Update-Event nur dann wechseln, wenn die Klasse exakt der Quellklasse entspricht.
+        // So vermeiden wir Eingriffe während der initialen Registrierung und unnötige Re-Updates.
+        if ($currentClassId !== $sourceClassId) {
             return;
         }
 

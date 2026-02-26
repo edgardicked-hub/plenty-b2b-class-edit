@@ -31,14 +31,13 @@ Verfügbare Felder:
 
 ## Verhalten
 
-Das Plugin hört auf `AfterContactCreate` und prüft dann:
+Das Plugin hört auf `AfterContactUpdate` und prüft dann:
 
 - `classId === sourceClassId`
 - VAT ist in `vatNumber`/`taxIdNumber` vorhanden **oder** in verknüpften `accounts` / `addresses` (inkl. Address-Option `typeId = 1`)
 - E-Mail endet **nicht** auf `ebayEmailDomain`
-- Es wird gewechselt, wenn die aktuelle Klasse der konfigurierten Quellklasse entspricht (`sourceClassId`) **oder** beim Create-Event noch `0` ist (Timing-Fall).
-- Kein Hook auf `AfterContactUpdate`, um Konflikte im laufenden Registrierungs-Update (z. B. "E-Mail-Adresse existiert bereits") zu vermeiden.
-- Vor dem Klassenwechsel wartet der Listener 15 Sekunden und prüft danach die Bedingungen erneut, damit der Kontakt zuerst vollständig angelegt werden kann.
+- Es wird nur gewechselt, wenn die aktuelle Klasse exakt der konfigurierten Quellklasse entspricht (`sourceClassId`).
+- Der Wechsel läuft im Update-Event, damit die Registrierung selbst nicht blockiert oder mit E-Mail-Konflikten gestört wird.
 
 Treffen alle Bedingungen zu, wird `classId` auf `targetClassId` gesetzt.
 
@@ -47,7 +46,7 @@ Treffen alle Bedingungen zu, wird `classId` auf `targetClassId` gesetzt.
 Falls die Klasse trotz USt-IdNr. nicht gewechselt wurde, enthält dieses Plugin jetzt zwei wichtige Korrekturen:
 
 - Das Klassen-Update nutzt die korrekte Signatur `updateContact(array $data, int $contactId)`.
-- Die USt-IdNr.-Prüfung liest VAT nicht nur aus dem geladenen Kontakt, sondern zusätzlich auch aus dem `AfterContactCreate`-Event (inkl. Optionen), falls Werte beim ersten Read noch nicht vollständig im Kontaktobjekt stehen.
+- Die USt-IdNr.-Prüfung liest VAT nicht nur aus dem geladenen Kontakt, sondern zusätzlich auch aus dem `AfterContactUpdate`-Event (inkl. Optionen), falls Werte beim ersten Read noch nicht vollständig im Kontaktobjekt stehen.
 - Zusätzlich wird rekursiv in verschachtelten Event-/Kontakt-Payloads nach VAT/USt-Feldern gesucht (z. B. Company/Address-Strukturen), falls die USt-IdNr. nicht direkt in `contact.vatNumber` liegt.
 - Der Listener versucht den Kontakt zusätzlich mit Relations (`accounts`, `addresses`) nachzuladen, damit USt-Daten aus Firmen-/Adresskontexten zuverlässig erkannt werden.
 - Collections aus Plenty (`accounts`, `addresses`, `options`) werden jetzt als iterierbare Daten behandelt (nicht nur als Arrays), damit VAT-Erkennung in realen B2BShop-Flows greift.

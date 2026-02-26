@@ -66,3 +66,12 @@ Das Plugin schreibt jetzt Diagnose-Logs in Plenty (Logger-Kontext `CustomerRegis
 - Erfolgreiche Klassenänderung
 
 So kann man im Plenty-Log schnell sehen, an welcher Bedingung der Wechsel stoppt.
+
+## Manuelles Triggern per REST (für App-Integration)
+
+Falls euer Registrierungsflow (z. B. PlentyLions B2BShop) die Kontakt-Events anders verarbeitet, könnt ihr den Klassenwechsel auch manuell per REST auslösen:
+
+- **Route:** `POST /rest/b2b-class-edit/switch/{contactId}`
+- Beispiel: `POST /rest/b2b-class-edit/switch/12345`
+
+Die Route ruft intern dieselbe Listener-Logik auf und schreibt weiterhin die Diagnose-Logs. So kann eure App den Wechsel gezielt nach erfolgreicher Registrierung anstoßen.

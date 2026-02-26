@@ -8,5 +8,6 @@
   "price": 0.0,
   "description": "Setzt die Kundenklasse bei Shop-Registrierungen mit USt-IdNr. automatisch von 4 auf 5.",
   "author": "Codex",
-  "serviceProvider": "B2BClassEdit\\Providers\\B2BClassEditServiceProvider"
+  "serviceProvider": "B2BClassEdit\\Providers\\B2BClassEditServiceProvider",
+  "routeServiceProvider": "B2BClassEdit\\Providers\\B2BClassEditRouteServiceProvider"
 }

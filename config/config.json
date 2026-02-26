@@ -19,5 +19,19 @@
     "label": "eBay E-Mail-Domain (Ausschluss)",
     "type": "text",
     "defaultValue": "@members.ebay.com"
+  },
+  {
+    "tab": "Einstellungen",
+    "key": "apiUsername",
+    "label": "API Benutzername",
+    "type": "text",
+    "defaultValue": ""
+  },
+  {
+    "tab": "Einstellungen",
+    "key": "apiPassword",
+    "label": "API Passwort",
+    "type": "text",
+    "defaultValue": ""
   }
 ]

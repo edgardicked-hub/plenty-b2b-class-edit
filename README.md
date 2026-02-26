@@ -28,6 +28,8 @@ Verfügbare Felder:
 - **Kundenklasse Quelle (von)** = `sourceClassId` (Standard `4`)
 - **Kundenklasse Ziel (nach)** = `targetClassId` (Standard `5`)
 - **eBay E-Mail-Domain (Ausschluss)** = `ebayEmailDomain` (Standard `@members.ebay.com`)
+- **API Benutzername** = `apiUsername` (optional)
+- **API Passwort** = `apiPassword` (optional)
 
 ## Verhalten
 
@@ -75,3 +77,8 @@ Falls euer Registrierungsflow (z. B. PlentyLions B2BShop) die Kontakt-Events and
 - Beispiel: `POST /rest/b2b-class-edit/switch/12345`
 
 Die Route ruft intern dieselbe Listener-Logik auf und schreibt weiterhin die Diagnose-Logs. So kann eure App den Wechsel gezielt nach erfolgreicher Registrierung anstoßen.
+
+Wenn `apiUsername`/`apiPassword` in der Plugin-Konfiguration gesetzt sind, müssen diese Werte im POST-Request mitgesendet werden:
+
+- `apiUser`
+- `apiPassword`

@@ -38,6 +38,7 @@ Das Plugin hört auf `AfterContactCreate` und prüft dann:
 - E-Mail endet **nicht** auf `ebayEmailDomain`
 - Es wird gewechselt, wenn die aktuelle Klasse der konfigurierten Quellklasse entspricht (`sourceClassId`) **oder** beim Create-Event noch `0` ist (Timing-Fall).
 - Kein Hook auf `AfterContactUpdate`, um Konflikte im laufenden Registrierungs-Update (z. B. "E-Mail-Adresse existiert bereits") zu vermeiden.
+- Vor dem Klassenwechsel wartet der Listener 15 Sekunden und prüft danach die Bedingungen erneut, damit der Kontakt zuerst vollständig angelegt werden kann.
 
 Treffen alle Bedingungen zu, wird `classId` auf `targetClassId` gesetzt.
 

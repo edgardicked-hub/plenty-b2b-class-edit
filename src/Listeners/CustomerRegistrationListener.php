@@ -64,6 +64,36 @@ class CustomerRegistrationListener
             return;
         }
 
+        // Gewünschte Verzögerung: 15 Sekunden warten, damit der Kontakt inkl. Relationen
+        // im Registrierungsprozess vollständig angelegt wurde.
+        sleep(15);
+
+        // Kontakt nach der Wartezeit neu laden und Bedingungen erneut prüfen.
+        $delayedContact = $this->contactRepository->findContactById($contactId);
+        $delayedContact = $this->loadContactWithRelations($contactId, $delayedContact);
+
+        if (!$this->isValidContactPayload($delayedContact)) {
+            return;
+        }
+
+        if (!$this->hasVatTaxId($delayedContact, $event)) {
+            return;
+        }
+
+        if ($this->isEbayCustomer($delayedContact, $event)) {
+            return;
+        }
+
+        $delayedClassId = (int) $this->readValue($delayedContact, 'classId', 0);
+
+        if ($delayedClassId === $targetClassId) {
+            return;
+        }
+
+        if ($delayedClassId !== 0 && $delayedClassId !== $sourceClassId) {
+            return;
+        }
+
         // plentymarkets ContactRepositoryContract erwartet: updateContact(array $data, int $contactId)
         $this->contactRepository->updateContact([
             'classId' => $targetClassId,

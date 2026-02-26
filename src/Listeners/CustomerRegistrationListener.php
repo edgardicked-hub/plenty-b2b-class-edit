@@ -31,6 +31,7 @@ class CustomerRegistrationListener
         }
 
         $contact = $this->contactRepository->findContactById($contactId);
+        $contact = $this->loadContactWithRelations($contactId, $contact);
 
         if (!$this->isValidContactPayload($contact)) {
             return;
@@ -116,9 +117,25 @@ class CustomerRegistrationListener
             return true;
         }
 
+        if ($this->hasVatTaxIdInAccounts($contact)) {
+            return true;
+        }
+
+        if ($this->hasVatTaxIdInAddresses($contact)) {
+            return true;
+        }
+
         $eventContact = $this->readValue($event, 'contact');
 
         if ($this->isValidContactPayload($eventContact) && $this->hasVatTaxIdInContact($eventContact)) {
+            return true;
+        }
+
+        if ($this->isValidContactPayload($eventContact) && $this->hasVatTaxIdInAccounts($eventContact)) {
+            return true;
+        }
+
+        if ($this->isValidContactPayload($eventContact) && $this->hasVatTaxIdInAddresses($eventContact)) {
             return true;
         }
 
@@ -173,6 +190,87 @@ class CustomerRegistrationListener
         }
 
         return false;
+    }
+
+    private function hasVatTaxIdInAccounts($contact)
+    {
+        $accounts = $this->readValue($contact, 'accounts');
+
+        if (!is_array($accounts)) {
+            return false;
+        }
+
+        foreach ($accounts as $account) {
+            $taxIdNumber = trim((string) $this->readValue($account, 'taxIdNumber', ''));
+
+            if ($taxIdNumber !== '') {
+                return true;
+            }
+
+            $vatNumber = trim((string) $this->readValue($account, 'vatNumber', ''));
+
+            if ($vatNumber !== '') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function hasVatTaxIdInAddresses($contact)
+    {
+        $addresses = $this->readValue($contact, 'addresses');
+
+        if (!is_array($addresses)) {
+            return false;
+        }
+
+        foreach ($addresses as $address) {
+            $taxIdNumber = trim((string) $this->readValue($address, 'taxIdNumber', ''));
+
+            if ($taxIdNumber !== '') {
+                return true;
+            }
+
+            $vatNumber = trim((string) $this->readValue($address, 'vatNumber', ''));
+
+            if ($vatNumber !== '') {
+                return true;
+            }
+
+            $options = $this->readValue($address, 'options');
+
+            if (!is_array($options)) {
+                continue;
+            }
+
+            foreach ($options as $option) {
+                $typeId = (int) $this->readValue($option, 'typeId', -1);
+                $value = trim((string) $this->readValue($option, 'value', ''));
+
+                // Address option typeId 1 = VAT number
+                if ($typeId === 1 && $value !== '') {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private function loadContactWithRelations($contactId, $fallbackContact)
+    {
+        try {
+            $contactWithRelations = $this->contactRepository->findContactById($contactId, array('accounts', 'addresses'));
+
+            if ($this->isValidContactPayload($contactWithRelations)) {
+                return $contactWithRelations;
+            }
+        } catch (\Throwable $e) {
+            // Fallback auf den bereits geladenen Kontakt, damit der Prozess nicht blockiert.
+        }
+
+        return $fallbackContact;
     }
 
     private function hasVatTaxIdInPayload($payload, $depth)

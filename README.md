@@ -34,7 +34,7 @@ Verfügbare Felder:
 Das Plugin hört auf `AfterContactCreate` und prüft dann:
 
 - `classId === sourceClassId`
-- VAT ist in `vatNumber` oder in den Kontaktoptionen vorhanden
+- VAT ist in `vatNumber`/`taxIdNumber` vorhanden **oder** in verknüpften `accounts` / `addresses` (inkl. Address-Option `typeId = 1`)
 - E-Mail endet **nicht** auf `ebayEmailDomain`
 - Es wird nur gewechselt, wenn die aktuelle Klasse exakt der konfigurierten Quellklasse entspricht (`sourceClassId`).
 
@@ -47,4 +47,5 @@ Falls die Klasse trotz USt-IdNr. nicht gewechselt wurde, enthält dieses Plugin 
 - Das Klassen-Update nutzt die korrekte Signatur `updateContact(array $data, int $contactId)`.
 - Die USt-IdNr.-Prüfung liest VAT nicht nur aus dem geladenen Kontakt, sondern zusätzlich auch aus dem `AfterContactCreate`-Event (inkl. Optionen), falls Werte beim ersten Read noch nicht vollständig im Kontaktobjekt stehen.
 - Zusätzlich wird rekursiv in verschachtelten Event-/Kontakt-Payloads nach VAT/USt-Feldern gesucht (z. B. Company/Address-Strukturen), falls die USt-IdNr. nicht direkt in `contact.vatNumber` liegt.
+- Der Listener versucht den Kontakt zusätzlich mit Relations (`accounts`, `addresses`) nachzuladen, damit USt-Daten aus Firmen-/Adresskontexten zuverlässig erkannt werden.
 - Event- und Kontaktwerte werden kompatibel ohne verbotene Funktionsaufrufe gelesen (Array + Objekt-Cast mit Fallback auf Property-Suffix), damit Allowed-Calls-Checks im Build nicht blockieren.

@@ -4,9 +4,12 @@ namespace B2BClassEdit\Listeners;
 
 use Plenty\Modules\Account\Contact\Contracts\ContactRepositoryContract;
 use Plenty\Plugin\ConfigRepository;
+use Plenty\Plugin\Log\Loggable;
 
 class CustomerRegistrationListener
 {
+    use Loggable;
+
     const DEFAULT_SOURCE_CLASS_ID = 4;
     const DEFAULT_TARGET_CLASS_ID = 5;
 
@@ -27,8 +30,11 @@ class CustomerRegistrationListener
         $contactId = $this->extractContactId($event);
 
         if ($contactId === null) {
+            $this->getLogger(__METHOD__)->warning('B2BClassEdit: contactId could not be resolved from event payload');
             return;
         }
+
+        $this->getLogger(__METHOD__)->info('B2BClassEdit: evaluating contact for class switch', array('contactId' => $contactId));
 
         $contact = $this->contactRepository->findContactById($contactId);
         $contact = $this->loadContactWithRelations($contactId, $contact);
@@ -38,10 +44,12 @@ class CustomerRegistrationListener
         }
 
         if (!$this->hasVatTaxId($contact, $event)) {
+            $this->getLogger(__METHOD__)->info('B2BClassEdit: skipped, no VAT/USt-IdNr found', array('contactId' => $contactId));
             return;
         }
 
         if ($this->isEbayCustomer($contact, $event)) {
+            $this->getLogger(__METHOD__)->info('B2BClassEdit: skipped, eBay email domain detected', array('contactId' => $contactId));
             return;
         }
 
@@ -49,18 +57,21 @@ class CustomerRegistrationListener
         $targetClassId = $this->getTargetClassId();
 
         if ($sourceClassId === $targetClassId) {
+            $this->getLogger(__METHOD__)->warning('B2BClassEdit: sourceClassId equals targetClassId, no change applied', array('sourceClassId' => $sourceClassId, 'targetClassId' => $targetClassId));
             return;
         }
 
         $currentClassId = (int) $this->readValue($contact, 'classId', 0);
 
         if ($currentClassId === $targetClassId) {
+            $this->getLogger(__METHOD__)->info('B2BClassEdit: skipped, contact already in target class', array('contactId' => $contactId, 'targetClassId' => $targetClassId));
             return;
         }
 
         // Im Update-Event nur dann wechseln, wenn die Klasse exakt der Quellklasse entspricht.
         // So vermeiden wir Eingriffe während der initialen Registrierung und unnötige Re-Updates.
         if ($currentClassId !== $sourceClassId) {
+            $this->getLogger(__METHOD__)->info('B2BClassEdit: skipped, contact class does not match source class', array('contactId' => $contactId, 'currentClassId' => $currentClassId, 'sourceClassId' => $sourceClassId));
             return;
         }
 
@@ -68,6 +79,8 @@ class CustomerRegistrationListener
         $this->contactRepository->updateContact([
             'classId' => $targetClassId,
         ], $contactId);
+
+        $this->getLogger(__METHOD__)->info('B2BClassEdit: customer class updated', array('contactId' => $contactId, 'fromClassId' => $currentClassId, 'toClassId' => $targetClassId));
     }
 
     private function getSourceClassId()

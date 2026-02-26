@@ -53,3 +53,16 @@ Falls die Klasse trotz USt-IdNr. nicht gewechselt wurde, enthält dieses Plugin 
 - Beim Nachladen des Kontakts werden die Relations `accounts`, `addresses` und `options` angefordert.
 - Für B2BShop-/Custom-Registrierungen wird die Kontakt-ID notfalls rekursiv aus dem Event-Payload gelesen, wenn sie nicht direkt als `contactId` verfügbar ist.
 - Event- und Kontaktwerte werden kompatibel ohne verbotene Funktionsaufrufe gelesen (Array + Objekt-Cast mit Fallback auf Property-Suffix), damit Allowed-Calls-Checks im Build nicht blockieren.
+
+## Logging / Fehlersuche
+
+Das Plugin schreibt jetzt Diagnose-Logs in Plenty (Logger-Kontext `CustomerRegistrationListener::handle`), u. a. für:
+
+- Contact-ID konnte nicht ermittelt werden
+- Kein VAT/USt-Wert gefunden
+- eBay-Domain erkannt (Skip)
+- Source/Zielklasse fehlerhaft konfiguriert
+- Klasse passt nicht zur Quellklasse (Skip)
+- Erfolgreiche Klassenänderung
+
+So kann man im Plenty-Log schnell sehen, an welcher Bedingung der Wechsel stoppt.

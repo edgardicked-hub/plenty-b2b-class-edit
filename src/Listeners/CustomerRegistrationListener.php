@@ -58,7 +58,9 @@ class CustomerRegistrationListener
             return;
         }
 
-        if ($currentClassId !== $sourceClassId) {
+        // In einigen Registrierungs-Flows ist classId beim Create-Event noch 0.
+        // Dann trotzdem auf Zielklasse wechseln, wenn alle anderen Bedingungen erfüllt sind.
+        if ($currentClassId !== 0 && $currentClassId !== $sourceClassId) {
             return;
         }
 

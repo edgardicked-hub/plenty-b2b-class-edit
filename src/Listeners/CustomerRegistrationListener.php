@@ -27,348 +27,177 @@ class CustomerRegistrationListener
 
     public function handle($event)
     {
-        $contactId = $this->extractContactId($event);
-
-        if ($contactId === null) {
-            $this->getLogger(__METHOD__)->warning('B2BClassEdit: contactId could not be resolved from event payload');
+        if (!is_object($event)) {
             return;
         }
 
-        $this->getLogger(__METHOD__)->info('B2BClassEdit: evaluating contact for class switch', array('contactId' => $contactId));
+        $eventClass = get_class($event);
+        $eventContact = $event->getContact();
+        $contactId = (int) $this->readValue($eventContact, 'id', 0);
+
+        if ($contactId <= 0) {
+            $this->getLogger(__METHOD__)->warning('B2BClassEdit: contactId missing on event contact', [
+                'eventClass' => $eventClass,
+            ]);
+            return;
+        }
+
+        $this->processContactId($contactId, $eventClass, $eventContact);
+    }
+
+    public function processContactId($contactId, $eventClass = 'manual', $eventContact = null)
+    {
+        $contactId = (int) $contactId;
+
+        if ($contactId <= 0) {
+            return;
+        }
 
         $contact = $this->contactRepository->findContactById($contactId);
         $contact = $this->loadContactWithRelations($contactId, $contact);
 
-        if (!$this->isValidContactPayload($contact)) {
+        if (!$this->isValidPayload($contact)) {
             return;
         }
 
-        if (!$this->hasVatTaxId($contact, $event)) {
-            $this->getLogger(__METHOD__)->info('B2BClassEdit: skipped, no VAT/USt-IdNr found', array('contactId' => $contactId));
-            return;
-        }
-
-        if ($this->isEbayCustomer($contact, $event)) {
-            $this->getLogger(__METHOD__)->info('B2BClassEdit: skipped, eBay email domain detected', array('contactId' => $contactId));
-            return;
+        if (!$this->isValidPayload($eventContact)) {
+            $eventContact = $contact;
         }
 
         $sourceClassId = $this->getSourceClassId();
         $targetClassId = $this->getTargetClassId();
-
-        if ($sourceClassId === $targetClassId) {
-            $this->getLogger(__METHOD__)->warning('B2BClassEdit: sourceClassId equals targetClassId, no change applied', array('sourceClassId' => $sourceClassId, 'targetClassId' => $targetClassId));
-            return;
-        }
-
         $currentClassId = (int) $this->readValue($contact, 'classId', 0);
 
+        $this->getLogger(__METHOD__)->info('B2BClassEdit: evaluating contact', [
+            'eventClass' => $eventClass,
+            'contactId' => $contactId,
+            'currentClassId' => $currentClassId,
+            'sourceClassId' => $sourceClassId,
+            'targetClassId' => $targetClassId,
+        ]);
+
+        if ($sourceClassId === $targetClassId) {
+            $this->getLogger(__METHOD__)->warning('B2BClassEdit: sourceClassId equals targetClassId');
+            return;
+        }
+
         if ($currentClassId === $targetClassId) {
-            $this->getLogger(__METHOD__)->info('B2BClassEdit: skipped, contact already in target class', array('contactId' => $contactId, 'targetClassId' => $targetClassId));
+            $this->getLogger(__METHOD__)->info('B2BClassEdit: skipped, already target class', [
+                'contactId' => $contactId,
+            ]);
             return;
         }
 
-        // Im Update-Event nur dann wechseln, wenn die Klasse exakt der Quellklasse entspricht.
-        // So vermeiden wir Eingriffe während der initialen Registrierung und unnötige Re-Updates.
         if ($currentClassId !== $sourceClassId) {
-            $this->getLogger(__METHOD__)->info('B2BClassEdit: skipped, contact class does not match source class', array('contactId' => $contactId, 'currentClassId' => $currentClassId, 'sourceClassId' => $sourceClassId));
+            $this->getLogger(__METHOD__)->info('B2BClassEdit: skipped, class does not match sourceClassId', [
+                'contactId' => $contactId,
+                'currentClassId' => $currentClassId,
+                'sourceClassId' => $sourceClassId,
+            ]);
             return;
         }
 
-        // plentymarkets ContactRepositoryContract erwartet: updateContact(array $data, int $contactId)
+        $vat = $this->getVatTaxId($contact);
+
+        if ($vat === '') {
+            $this->getLogger(__METHOD__)->info('B2BClassEdit: skipped, no VAT/USt-IdNr found', [
+                'contactId' => $contactId,
+            ]);
+            return;
+        }
+
+        if ($this->isEbayCustomer($contact, $eventContact)) {
+            $this->getLogger(__METHOD__)->info('B2BClassEdit: skipped, eBay domain', [
+                'contactId' => $contactId,
+            ]);
+            return;
+        }
+
         $this->contactRepository->updateContact([
             'classId' => $targetClassId,
         ], $contactId);
 
-        $this->getLogger(__METHOD__)->info('B2BClassEdit: customer class updated', array('contactId' => $contactId, 'fromClassId' => $currentClassId, 'toClassId' => $targetClassId));
-    }
-
-    private function getSourceClassId()
-    {
-        return (int) $this->readConfigValue('sourceClassId', self::DEFAULT_SOURCE_CLASS_ID);
-    }
-
-    private function getTargetClassId()
-    {
-        return (int) $this->readConfigValue('targetClassId', self::DEFAULT_TARGET_CLASS_ID);
-    }
-
-
-    private function readConfigValue($key, $default = null)
-    {
-        $value = $this->config->get('B2BClassEdit.' . $key, null);
-
-        if ($value === null || $value === '') {
-            $value = $this->config->get($key, $default);
-        }
-
-        return $value;
-    }
-
-    private function extractContactId($event)
-    {
-        $eventContactId = $this->readValue($event, 'contactId');
-
-        if ($eventContactId) {
-            return (int) $eventContactId;
-        }
-
-        $eventContact = $this->readValue($event, 'contact');
-
-        if ($this->isValidContactPayload($eventContact)) {
-            $contactId = $this->readValue($eventContact, 'id');
-
-            if ($contactId) {
-                return (int) $contactId;
-            }
-        }
-
-        // B2BShop/andere Flows liefern die ID teils nur verschachtelt im Event-Payload.
-        $payloadContactId = $this->findFirstIntByKeys($event, array('contactId', 'id'));
-
-        if ($payloadContactId !== null) {
-            return $payloadContactId;
-        }
-
-        return null;
-    }
-
-    private function findFirstIntByKeys($payload, $keys, $depth = 0)
-    {
-        if ($depth > 6 || $payload === null) {
-            return null;
-        }
-
-        if (is_object($payload)) {
-            $payload = (array) $payload;
-        }
-
-        if (!is_array($payload)) {
-            return null;
-        }
-
-        foreach ($payload as $key => $value) {
-            $normalizedKey = is_string($key) ? strtolower($key) : '';
-
-            foreach ($keys as $wantedKey) {
-                if ($normalizedKey === strtolower($wantedKey) && (int) $value > 0) {
-                    return (int) $value;
-                }
-            }
-
-            if (is_array($value) || is_object($value)) {
-                $nested = $this->findFirstIntByKeys($value, $keys, $depth + 1);
-
-                if ($nested !== null) {
-                    return $nested;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    private function hasVatTaxId($contact, $event)
-    {
-        if ($this->hasVatTaxIdInContact($contact)) {
-            return true;
-        }
-
-        if ($this->hasVatTaxIdInAccounts($contact)) {
-            return true;
-        }
-
-        if ($this->hasVatTaxIdInAddresses($contact)) {
-            return true;
-        }
-
-        $eventContact = $this->readValue($event, 'contact');
-
-        if ($this->isValidContactPayload($eventContact) && $this->hasVatTaxIdInContact($eventContact)) {
-            return true;
-        }
-
-        if ($this->isValidContactPayload($eventContact) && $this->hasVatTaxIdInAccounts($eventContact)) {
-            return true;
-        }
-
-        if ($this->isValidContactPayload($eventContact) && $this->hasVatTaxIdInAddresses($eventContact)) {
-            return true;
-        }
-
-        // Fallback: manche Registrierungsstrecken liefern die USt-IdNr. in verschachtelten
-        // Company/Address-Strukturen. Darum zusätzlich rekursiv nach VAT-Feldern suchen.
-        if ($this->hasVatTaxIdInPayload($contact, 0) || $this->hasVatTaxIdInPayload($eventContact, 0) || $this->hasVatTaxIdInPayload($event, 0)) {
-            return true;
-        }
-
-        return false;
-    }
-
-    private function hasVatTaxIdInContact($contact)
-    {
-        $vatNumber = trim((string) $this->readValue($contact, 'vatNumber', ''));
-
-        if ($vatNumber !== '') {
-            return true;
-        }
-
-        $taxIdNumber = trim((string) $this->readValue($contact, 'taxIdNumber', ''));
-
-        if ($taxIdNumber !== '') {
-            return true;
-        }
-
-        $options = $this->asIterable($this->readValue($contact, 'options'));
-
-        foreach ($options as $option) {
-            $value = trim((string) $this->readValue($option, 'value', ''));
-
-            if ($value === '') {
-                continue;
-            }
-
-            $typeId = (int) $this->readValue($option, 'typeId', -1);
-            $subTypeId = (int) $this->readValue($option, 'subTypeId', -1);
-            $type = strtolower(trim((string) $this->readValue($option, 'type', '')));
-            $subType = strtolower(trim((string) $this->readValue($option, 'subType', '')));
-
-            if ($typeId === 6 || $subTypeId === 6) {
-                return true;
-            }
-
-            if ($this->containsAny($type, array('vat', 'ust', 'tax')) || $this->containsAny($subType, array('vat', 'ust', 'tax'))) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private function hasVatTaxIdInAccounts($contact)
-    {
-        $accounts = $this->asIterable($this->readValue($contact, 'accounts'));
-
-        foreach ($accounts as $account) {
-            $taxIdNumber = trim((string) $this->readValue($account, 'taxIdNumber', ''));
-
-            if ($taxIdNumber !== '') {
-                return true;
-            }
-
-            $vatNumber = trim((string) $this->readValue($account, 'vatNumber', ''));
-
-            if ($vatNumber !== '') {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private function hasVatTaxIdInAddresses($contact)
-    {
-        $addresses = $this->asIterable($this->readValue($contact, 'addresses'));
-
-        foreach ($addresses as $address) {
-            $taxIdNumber = trim((string) $this->readValue($address, 'taxIdNumber', ''));
-
-            if ($taxIdNumber !== '') {
-                return true;
-            }
-
-            $vatNumber = trim((string) $this->readValue($address, 'vatNumber', ''));
-
-            if ($vatNumber !== '') {
-                return true;
-            }
-
-            $options = $this->asIterable($this->readValue($address, 'options'));
-
-            foreach ($options as $option) {
-                $typeId = (int) $this->readValue($option, 'typeId', -1);
-                $value = trim((string) $this->readValue($option, 'value', ''));
-
-                // Address option typeId 1 = VAT number
-                if ($typeId === 1 && $value !== '') {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        $this->getLogger(__METHOD__)->info('B2BClassEdit: class updated', [
+            'eventClass' => $eventClass,
+            'contactId' => $contactId,
+            'fromClassId' => $currentClassId,
+            'toClassId' => $targetClassId,
+            'vat' => $this->maskVat($vat),
+            'updated' => true,
+        ]);
     }
 
     private function loadContactWithRelations($contactId, $fallbackContact)
     {
         try {
-            $contactWithRelations = $this->contactRepository->findContactById($contactId, array('accounts', 'addresses', 'options'));
+            $contact = $this->contactRepository->findContactById($contactId, [
+                'accounts',
+                'addresses',
+                'addresses.options',
+                'options',
+            ]);
 
-            if ($this->isValidContactPayload($contactWithRelations)) {
-                return $contactWithRelations;
+            if ($this->isValidPayload($contact)) {
+                return $contact;
             }
         } catch (\Throwable $e) {
-            // Fallback auf den bereits geladenen Kontakt, damit der Prozess nicht blockiert.
+            $this->getLogger(__METHOD__)->warning('B2BClassEdit: failed to eager-load relations', [
+                'contactId' => (int) $contactId,
+                'message' => $e->getMessage(),
+            ]);
         }
 
         return $fallbackContact;
     }
 
-    private function hasVatTaxIdInPayload($payload, $depth)
+    private function getVatTaxId($contact)
     {
-        if ($depth > 6 || $payload === null) {
-            return false;
+        // 1) Account.taxIdNumber
+        $accounts = $this->asIterable($this->readValue($contact, 'accounts'));
+        foreach ($accounts as $account) {
+            $vat = trim((string) $this->readValue($account, 'taxIdNumber', ''));
+            if ($vat !== '') {
+                return $vat;
+            }
         }
 
-        if (is_array($payload)) {
-            foreach ($payload as $key => $value) {
-                if ($this->isVatKeyWithValue($key, $value)) {
-                    return true;
-                }
+        // 2) Address.taxIdNumber (Alias)
+        $addresses = $this->asIterable($this->readValue($contact, 'addresses'));
+        foreach ($addresses as $address) {
+            $vat = trim((string) $this->readValue($address, 'taxIdNumber', ''));
+            if ($vat !== '') {
+                return $vat;
+            }
 
-                if (is_array($value) || is_object($value)) {
-                    if ($this->hasVatTaxIdInPayload($value, $depth + 1)) {
-                        return true;
+            // 3) Address options typeId=1
+            $options = $this->asIterable($this->readValue($address, 'options'));
+            foreach ($options as $option) {
+                if ((int) $this->readValue($option, 'typeId', -1) === 1) {
+                    $value = trim((string) $this->readValue($option, 'value', ''));
+                    if ($value !== '') {
+                        return $value;
                     }
                 }
             }
-
-            return false;
         }
 
-        if (is_object($payload)) {
-            return $this->hasVatTaxIdInPayload((array) $payload, $depth + 1);
+        // Fallback auf direkte Contact-Felder
+        $directVat = trim((string) $this->readValue($contact, 'vatNumber', ''));
+        if ($directVat !== '') {
+            return $directVat;
         }
 
-        return false;
+        $directTax = trim((string) $this->readValue($contact, 'taxIdNumber', ''));
+        if ($directTax !== '') {
+            return $directTax;
+        }
+
+        return '';
     }
 
-    private function isVatKeyWithValue($key, $value)
+    private function isEbayCustomer($contact, $eventContact)
     {
-        if (!is_string($key)) {
-            return false;
-        }
-
-        $normalizedKey = strtolower($key);
-
-        if (!$this->containsAny($normalizedKey, array('vat', 'ust', 'taxid'))) {
-            return false;
-        }
-
-        if (is_string($value)) {
-            return trim($value) !== '';
-        }
-
-        if (is_int($value) || is_float($value)) {
-            return (string) $value !== '';
-        }
-
-        return false;
-    }
-
-    private function isEbayCustomer($contact, $event)
-    {
-        $email = strtolower($this->resolveEmail($contact, $event));
+        $email = strtolower($this->resolveEmail($contact, $eventContact));
 
         if ($email === '' || strpos($email, '@') === false) {
             return false;
@@ -383,46 +212,50 @@ class CustomerRegistrationListener
         return $this->endsWith($email, $ebayDomain);
     }
 
-    private function resolveEmail($contact, $event)
+    private function resolveEmail($contact, $eventContact)
     {
         $contactEmail = trim((string) $this->readValue($contact, 'email', ''));
-
         if ($contactEmail !== '') {
             return $contactEmail;
         }
 
         $privateEmail = trim((string) $this->readValue($contact, 'privateEmail', ''));
-
         if ($privateEmail !== '') {
             return $privateEmail;
         }
 
-        $eventContact = $this->readValue($event, 'contact');
-
-        if ($this->isValidContactPayload($eventContact)) {
-            $eventEmail = trim((string) $this->readValue($eventContact, 'email', ''));
-
-            if ($eventEmail !== '') {
-                return $eventEmail;
-            }
-        }
-
-        $options = $this->asIterable($this->readValue($contact, 'options'));
-
-        foreach ($options as $option) {
-            $value = trim((string) $this->readValue($option, 'value', ''));
-
-            if ($value !== '' && strpos($value, '@') !== false) {
-                return $value;
-            }
+        $eventEmail = trim((string) $this->readValue($eventContact, 'email', ''));
+        if ($eventEmail !== '') {
+            return $eventEmail;
         }
 
         return '';
     }
 
-    private function isValidContactPayload($contact)
+    private function readConfigValue($key, $default = null)
     {
-        return is_array($contact) || is_object($contact);
+        $value = $this->config->get('B2BClassEdit.' . $key, null);
+
+        if ($value === null || $value === '') {
+            $value = $this->config->get($key, $default);
+        }
+
+        return $value;
+    }
+
+    private function getSourceClassId()
+    {
+        return (int) $this->readConfigValue('sourceClassId', self::DEFAULT_SOURCE_CLASS_ID);
+    }
+
+    private function getTargetClassId()
+    {
+        return (int) $this->readConfigValue('targetClassId', self::DEFAULT_TARGET_CLASS_ID);
+    }
+
+    private function isValidPayload($value)
+    {
+        return is_array($value) || is_object($value);
     }
 
     private function readValue($source, $key, $default = null)
@@ -443,7 +276,6 @@ class CustomerRegistrationListener
                     continue;
                 }
 
-                // private/protected properties are matched by property-name suffix
                 if (substr($objectKey, -strlen($key)) === $key) {
                     return $value;
                 }
@@ -453,7 +285,6 @@ class CustomerRegistrationListener
         return $default;
     }
 
-
     private function asIterable($value)
     {
         if (is_array($value)) {
@@ -461,8 +292,7 @@ class CustomerRegistrationListener
         }
 
         if (is_object($value)) {
-            $items = array();
-
+            $items = [];
             foreach ($value as $itemKey => $itemValue) {
                 $items[$itemKey] = $itemValue;
             }
@@ -470,26 +300,26 @@ class CustomerRegistrationListener
             if (!empty($items)) {
                 return $items;
             }
-
-            $casted = (array) $value;
-
-            if (is_array($casted)) {
-                return $casted;
-            }
         }
 
-        return array();
+        return [];
     }
 
-    private function containsAny($value, $needles)
+    private function maskVat($vat)
     {
-        foreach ($needles as $needle) {
-            if ($needle !== '' && strpos($value, $needle) !== false) {
-                return true;
-            }
+        $vat = trim((string) $vat);
+
+        if ($vat === '') {
+            return '';
         }
 
-        return false;
+        $length = strlen($vat);
+
+        if ($length <= 4) {
+            return '****';
+        }
+
+        return substr($vat, 0, 2) . '…' . substr($vat, -4);
     }
 
     private function endsWith($value, $suffix)

@@ -37,9 +37,7 @@ class ClassSwitchController extends Controller
         }
 
         // Nutzt dieselbe Logik wie der Event-Listener, aber manuell per API aufrufbar.
-        $listener->handle([
-            'contactId' => $contactId,
-        ]);
+        $listener->processContactId($contactId, 'manual_rest', null);
 
         return [
             'success' => true,

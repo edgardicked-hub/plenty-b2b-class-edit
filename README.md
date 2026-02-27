@@ -34,22 +34,20 @@ Verfügbare Felder:
 
 ## Verhalten
 
-Das Plugin hört auf `AfterContactUpdate` und prüft dann:
+Das Plugin hört auf `AfterContactCreate` und `AfterContactUpdate` und prüft dann:
 
 - `classId === sourceClassId`
-- VAT ist in `vatNumber`/`taxIdNumber` vorhanden **oder** in verknüpften `accounts` / `addresses` (inkl. Address-Option `typeId = 1`)
+- VAT/USt-IdNr. wird bevorzugt aus `accounts.taxIdNumber`, dann `addresses.taxIdNumber`, dann `addresses.options` mit `typeId = 1` gelesen
 - E-Mail endet **nicht** auf `ebayEmailDomain`
-- Es wird nur gewechselt, wenn die aktuelle Klasse exakt der konfigurierten Quellklasse entspricht (`sourceClassId`).
-- Der Wechsel läuft im Update-Event, damit die Registrierung selbst nicht blockiert oder mit E-Mail-Konflikten gestört wird.
 
-Treffen alle Bedingungen zu, wird `classId` auf `targetClassId` gesetzt.
+Treffen alle Bedingungen zu, wird `classId` von `sourceClassId` auf `targetClassId` gesetzt.
 
 ## Hinweis zum letzten Funktionsfix
 
 Falls die Klasse trotz USt-IdNr. nicht gewechselt wurde, enthält dieses Plugin jetzt zwei wichtige Korrekturen:
 
 - Das Klassen-Update nutzt die korrekte Signatur `updateContact(array $data, int $contactId)`.
-- Die USt-IdNr.-Prüfung liest VAT nicht nur aus dem geladenen Kontakt, sondern zusätzlich auch aus dem `AfterContactUpdate`-Event (inkl. Optionen), falls Werte beim ersten Read noch nicht vollständig im Kontaktobjekt stehen.
+- Die USt-IdNr.-Prüfung arbeitet primär auf dem Event-Kontakt (`getContact()`) und lädt den Kontakt zusätzlich mit `accounts`, `addresses`, `addresses.options` und `options` nach, damit VAT-Felder zuverlässig verfügbar sind.
 - Zusätzlich wird rekursiv in verschachtelten Event-/Kontakt-Payloads nach VAT/USt-Feldern gesucht (z. B. Company/Address-Strukturen), falls die USt-IdNr. nicht direkt in `contact.vatNumber` liegt.
 - Der Listener versucht den Kontakt zusätzlich mit Relations (`accounts`, `addresses`) nachzuladen, damit USt-Daten aus Firmen-/Adresskontexten zuverlässig erkannt werden.
 - Collections aus Plenty (`accounts`, `addresses`, `options`) werden jetzt als iterierbare Daten behandelt (nicht nur als Arrays), damit VAT-Erkennung in realen B2BShop-Flows greift.
@@ -61,11 +59,13 @@ Falls die Klasse trotz USt-IdNr. nicht gewechselt wurde, enthält dieses Plugin 
 
 Das Plugin schreibt jetzt Diagnose-Logs in Plenty (Logger-Kontext `CustomerRegistrationListener::handle`), u. a. für:
 
+- Event-Klasse (Create/Update)
 - Contact-ID konnte nicht ermittelt werden
 - Kein VAT/USt-Wert gefunden
 - eBay-Domain erkannt (Skip)
 - Source/Zielklasse fehlerhaft konfiguriert
 - Klasse passt nicht zur Quellklasse (Skip)
+- Gefundene VAT (maskiert)
 - Erfolgreiche Klassenänderung
 
 So kann man im Plenty-Log schnell sehen, an welcher Bedingung der Wechsel stoppt.

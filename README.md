@@ -91,3 +91,10 @@ Wenn `apiUsername`/`apiPassword` in der Plugin-Konfiguration gesetzt sind, müss
 
 - `apiUser`
 - `apiPassword`
+
+## Stabilitäts-Fixes (Registrierung hängt nicht mehr)
+
+- `handle()` läuft jetzt vollständig in `try/catch`, damit Fehler den Registrierungsprozess nicht blockieren.
+- Reentrancy-Guard pro `contactId` verhindert Event-Loop-Rekursion bei `updateContact()` im Event-Kontext.
+- Kontakt wird nur einmal geladen (direkt mit Relations `accounts`, `addresses`, `addresses.options`, `options`).
+- `updateContact()` ist separat abgesichert; bei Fehlern wird geloggt und sauber beendet.

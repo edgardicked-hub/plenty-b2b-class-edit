@@ -13,6 +13,9 @@ class CustomerRegistrationListener
     const DEFAULT_SOURCE_CLASS_ID = 4;
     const DEFAULT_TARGET_CLASS_ID = 5;
 
+    /** @var array<int, bool> */
+    private static $inProgress = [];
+
     /** @var ContactRepositoryContract */
     private $contactRepository;
 
@@ -27,22 +30,31 @@ class CustomerRegistrationListener
 
     public function handle($event)
     {
-        if (!is_object($event)) {
-            return;
-        }
+        try {
+            if (!is_object($event)) {
+                return;
+            }
 
-        $eventClass = get_class($event);
-        $eventContact = $event->getContact();
-        $contactId = (int) $this->readValue($eventContact, 'id', 0);
+            $eventClass = get_class($event);
 
-        if ($contactId <= 0) {
-            $this->getLogger(__METHOD__)->warning('B2BClassEdit: contactId missing on event contact', [
-                'eventClass' => $eventClass,
+            // Kein method_exists (Allowed Calls), stattdessen sicherer Aufruf in try/catch.
+            $eventContact = $event->getContact();
+            $contactId = (int) $this->readValue($eventContact, 'id', 0);
+
+            if ($contactId <= 0) {
+                $this->getLogger(__METHOD__)->warning('B2BClassEdit: contactId missing on event contact', [
+                    'eventClass' => $eventClass,
+                ]);
+                return;
+            }
+
+            $this->processContactId($contactId, $eventClass, $eventContact);
+        } catch (\Throwable $e) {
+            $this->getLogger(__METHOD__)->error('B2BClassEdit: handler crashed', [
+                'message' => $e->getMessage(),
             ]);
             return;
         }
-
-        $this->processContactId($contactId, $eventClass, $eventContact);
     }
 
     public function processContactId($contactId, $eventClass = 'manual', $eventContact = null)
@@ -53,101 +65,119 @@ class CustomerRegistrationListener
             return;
         }
 
-        $contact = $this->contactRepository->findContactById($contactId);
-        $contact = $this->loadContactWithRelations($contactId, $contact);
-
-        if (!$this->isValidPayload($contact)) {
+        if (isset(self::$inProgress[$contactId])) {
             return;
         }
 
-        if (!$this->isValidPayload($eventContact)) {
-            $eventContact = $contact;
-        }
+        self::$inProgress[$contactId] = true;
 
-        $sourceClassId = $this->getSourceClassId();
-        $targetClassId = $this->getTargetClassId();
-        $currentClassId = (int) $this->readValue($contact, 'classId', 0);
+        try {
+            $contact = $this->loadContactWithRelations($contactId);
 
-        $this->getLogger(__METHOD__)->info('B2BClassEdit: evaluating contact', [
-            'eventClass' => $eventClass,
-            'contactId' => $contactId,
-            'currentClassId' => $currentClassId,
-            'sourceClassId' => $sourceClassId,
-            'targetClassId' => $targetClassId,
-        ]);
+            if (!$this->isValidPayload($contact)) {
+                return;
+            }
 
-        if ($sourceClassId === $targetClassId) {
-            $this->getLogger(__METHOD__)->warning('B2BClassEdit: sourceClassId equals targetClassId');
-            return;
-        }
+            if (!$this->isValidPayload($eventContact)) {
+                $eventContact = $contact;
+            }
 
-        if ($currentClassId === $targetClassId) {
-            $this->getLogger(__METHOD__)->info('B2BClassEdit: skipped, already target class', [
-                'contactId' => $contactId,
-            ]);
-            return;
-        }
+            $sourceClassId = $this->getSourceClassId();
+            $targetClassId = $this->getTargetClassId();
+            $currentClassId = (int) $this->readValue($contact, 'classId', 0);
 
-        if ($currentClassId !== $sourceClassId) {
-            $this->getLogger(__METHOD__)->info('B2BClassEdit: skipped, class does not match sourceClassId', [
+            $this->getLogger(__METHOD__)->info('B2BClassEdit: evaluating contact', [
+                'eventClass' => $eventClass,
                 'contactId' => $contactId,
                 'currentClassId' => $currentClassId,
                 'sourceClassId' => $sourceClassId,
+                'targetClassId' => $targetClassId,
             ]);
-            return;
-        }
 
-        $vat = $this->getVatTaxId($contact);
+            if ($sourceClassId === $targetClassId) {
+                $this->getLogger(__METHOD__)->warning('B2BClassEdit: sourceClassId equals targetClassId');
+                return;
+            }
 
-        if ($vat === '') {
-            $this->getLogger(__METHOD__)->info('B2BClassEdit: skipped, no VAT/USt-IdNr found', [
+            if ($currentClassId === $targetClassId) {
+                $this->getLogger(__METHOD__)->info('B2BClassEdit: skipped, already target class', [
+                    'contactId' => $contactId,
+                ]);
+                return;
+            }
+
+            if ($currentClassId !== $sourceClassId) {
+                $this->getLogger(__METHOD__)->info('B2BClassEdit: skipped, class does not match sourceClassId', [
+                    'contactId' => $contactId,
+                    'currentClassId' => $currentClassId,
+                    'sourceClassId' => $sourceClassId,
+                ]);
+                return;
+            }
+
+            $vat = $this->getVatTaxId($contact);
+
+            if ($vat === '') {
+                $this->getLogger(__METHOD__)->info('B2BClassEdit: skipped, no VAT/USt-IdNr found', [
+                    'contactId' => $contactId,
+                ]);
+                return;
+            }
+
+            if ($this->isEbayCustomer($contact, $eventContact)) {
+                $this->getLogger(__METHOD__)->info('B2BClassEdit: skipped, eBay domain', [
+                    'contactId' => $contactId,
+                ]);
+                return;
+            }
+
+            try {
+                $this->contactRepository->updateContact([
+                    'classId' => $targetClassId,
+                ], $contactId);
+            } catch (\Throwable $e) {
+                $this->getLogger(__METHOD__)->error('B2BClassEdit: updateContact failed', [
+                    'contactId' => $contactId,
+                    'message' => $e->getMessage(),
+                ]);
+                return;
+            }
+
+            $this->getLogger(__METHOD__)->info('B2BClassEdit: class updated', [
+                'eventClass' => $eventClass,
                 'contactId' => $contactId,
+                'fromClassId' => $currentClassId,
+                'toClassId' => $targetClassId,
+                'vat' => $this->maskVat($vat),
+                'updated' => true,
             ]);
-            return;
-        }
-
-        if ($this->isEbayCustomer($contact, $eventContact)) {
-            $this->getLogger(__METHOD__)->info('B2BClassEdit: skipped, eBay domain', [
+        } catch (\Throwable $e) {
+            $this->getLogger(__METHOD__)->error('B2BClassEdit: processContactId crashed', [
                 'contactId' => $contactId,
+                'message' => $e->getMessage(),
             ]);
             return;
+        } finally {
+            unset(self::$inProgress[$contactId]);
         }
-
-        $this->contactRepository->updateContact([
-            'classId' => $targetClassId,
-        ], $contactId);
-
-        $this->getLogger(__METHOD__)->info('B2BClassEdit: class updated', [
-            'eventClass' => $eventClass,
-            'contactId' => $contactId,
-            'fromClassId' => $currentClassId,
-            'toClassId' => $targetClassId,
-            'vat' => $this->maskVat($vat),
-            'updated' => true,
-        ]);
     }
 
-    private function loadContactWithRelations($contactId, $fallbackContact)
+    private function loadContactWithRelations($contactId)
     {
         try {
-            $contact = $this->contactRepository->findContactById($contactId, [
+            return $this->contactRepository->findContactById($contactId, [
                 'accounts',
                 'addresses',
                 'addresses.options',
                 'options',
             ]);
-
-            if ($this->isValidPayload($contact)) {
-                return $contact;
-            }
         } catch (\Throwable $e) {
             $this->getLogger(__METHOD__)->warning('B2BClassEdit: failed to eager-load relations', [
                 'contactId' => (int) $contactId,
                 'message' => $e->getMessage(),
             ]);
+            return null;
         }
-
-        return $fallbackContact;
     }
 
     private function getVatTaxId($contact)

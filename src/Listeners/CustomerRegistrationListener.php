@@ -319,8 +319,22 @@ class CustomerRegistrationListener
             return array_key_exists($key, $iterable) ? $iterable[$key] : $default;
         }
 
-        if (is_object($source) && isset($source->$key)) {
-            return $source->$key;
+        if (is_object($source)) {
+            $objectValues = (array) $source;
+
+            if (array_key_exists($key, $objectValues)) {
+                return $objectValues[$key];
+            }
+
+            foreach ($objectValues as $objectKey => $value) {
+                if (!is_string($objectKey)) {
+                    continue;
+                }
+
+                if (substr($objectKey, -strlen($key)) === $key) {
+                    return $value;
+                }
+            }
         }
 
         return $default;
@@ -333,7 +347,13 @@ class CustomerRegistrationListener
         }
 
         if ($value instanceof \Traversable) {
-            return iterator_to_array($value);
+            $out = [];
+
+            foreach ($value as $itemKey => $itemValue) {
+                $out[$itemKey] = $itemValue;
+            }
+
+            return $out;
         }
 
         return [];

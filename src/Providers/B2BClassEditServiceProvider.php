@@ -5,6 +5,7 @@ namespace B2BClassEdit\Providers;
 use B2BClassEdit\Listeners\CustomerRegistrationListener;
 use Plenty\Modules\Account\Contact\Events\AfterContactCreate;
 use Plenty\Modules\Account\Contact\Events\AfterContactUpdate;
+use Plenty\Modules\Authentication\Events\AfterAccountAuthentication;
 use Plenty\Plugin\Events\Dispatcher;
 use Plenty\Plugin\ServiceProvider;
 
@@ -18,5 +19,6 @@ class B2BClassEditServiceProvider extends ServiceProvider
     {
         $dispatcher->listen(AfterContactCreate::class, CustomerRegistrationListener::class);
         $dispatcher->listen(AfterContactUpdate::class, CustomerRegistrationListener::class);
+        $dispatcher->listen(AfterAccountAuthentication::class, CustomerRegistrationListener::class);
     }
 }

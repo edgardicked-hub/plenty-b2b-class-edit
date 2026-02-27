@@ -34,7 +34,7 @@ Verfügbare Felder:
 
 ## Verhalten
 
-Das Plugin hört auf `AfterContactCreate` und `AfterContactUpdate` und prüft dann:
+Das Plugin hört auf `AfterContactCreate`, `AfterContactUpdate` und zusätzlich `AfterAccountAuthentication` und prüft dann:
 
 - `classId === sourceClassId`
 - VAT/USt-IdNr. wird bevorzugt aus `accounts.taxIdNumber`, dann `addresses.taxIdNumber`, dann `addresses.options` mit `typeId = 1` gelesen
@@ -47,13 +47,13 @@ Treffen alle Bedingungen zu, wird `classId` von `sourceClassId` auf `targetClass
 Falls die Klasse trotz USt-IdNr. nicht gewechselt wurde, enthält dieses Plugin jetzt zwei wichtige Korrekturen:
 
 - Das Klassen-Update nutzt die korrekte Signatur `updateContact(array $data, int $contactId)`.
-- Die USt-IdNr.-Prüfung arbeitet primär auf dem Event-Kontakt (`getContact()`) und lädt den Kontakt zusätzlich mit `accounts`, `addresses`, `addresses.options` und `options` nach, damit VAT-Felder zuverlässig verfügbar sind.
+- Die USt-IdNr.-Prüfung arbeitet primär auf dem Event-Kontakt (`getContact()` bzw. `getAccountContact()`) und lädt den Kontakt zusätzlich mit `accounts`, `addresses`, `addresses.options` und `options` nach, damit VAT-Felder zuverlässig verfügbar sind.
 - Zusätzlich wird rekursiv in verschachtelten Event-/Kontakt-Payloads nach VAT/USt-Feldern gesucht (z. B. Company/Address-Strukturen), falls die USt-IdNr. nicht direkt in `contact.vatNumber` liegt.
 - Der Listener versucht den Kontakt zusätzlich mit Relations (`accounts`, `addresses`) nachzuladen, damit USt-Daten aus Firmen-/Adresskontexten zuverlässig erkannt werden.
 - Collections aus Plenty (`accounts`, `addresses`, `options`) werden jetzt als iterierbare Daten behandelt (nicht nur als Arrays), damit VAT-Erkennung in realen B2BShop-Flows greift.
 - Beim Nachladen des Kontakts werden die Relations `accounts`, `addresses` und `options` angefordert.
 - Für B2BShop-/Custom-Registrierungen wird die Kontakt-ID notfalls rekursiv aus dem Event-Payload gelesen, wenn sie nicht direkt als `contactId` verfügbar ist.
-- Event- und Kontaktwerte werden kompatibel ohne verbotene Funktionsaufrufe gelesen (Array + Objekt-Cast mit Fallback auf Property-Suffix), damit Allowed-Calls-Checks im Build nicht blockieren.
+- Model-Werte werden zuerst über `toArray()` normalisiert und iterierbare Collections werden sauber als Arrays gelesen.
 
 ## Logging / Fehlersuche
 

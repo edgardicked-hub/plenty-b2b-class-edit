@@ -3,6 +3,9 @@
 namespace B2BClassEdit\Listeners;
 
 use Plenty\Modules\Account\Contact\Contracts\ContactRepositoryContract;
+use Plenty\Modules\Account\Contact\Events\AfterContactCreate;
+use Plenty\Modules\Account\Contact\Events\AfterContactUpdate;
+use Plenty\Modules\Authentication\Events\AfterAccountAuthentication;
 use Plenty\Plugin\ConfigRepository;
 use Plenty\Plugin\Log\Loggable;
 
@@ -36,10 +39,22 @@ class CustomerRegistrationListener
             }
 
             $eventClass = get_class($event);
+            $eventContact = null;
+            $contactId = 0;
 
-            // Kein method_exists (Allowed Calls), stattdessen sicherer Aufruf in try/catch.
-            $eventContact = $event->getContact();
-            $contactId = (int) $this->readValue($eventContact, 'id', 0);
+            if ($event instanceof AfterContactCreate || $event instanceof AfterContactUpdate) {
+                $eventContact = $event->getContact();
+                $contactId = (int) $this->readValue($eventContact, 'id', 0);
+            } elseif ($event instanceof AfterAccountAuthentication) {
+                if (!$event->isSuccessful()) {
+                    return;
+                }
+
+                $eventContact = $event->getAccountContact();
+                $contactId = (int) $this->readValue($eventContact, 'id', 0);
+            } else {
+                return;
+            }
 
             if ($contactId <= 0) {
                 $this->getLogger(__METHOD__)->warning('B2BClassEdit: contactId missing on event contact', [
@@ -290,26 +305,22 @@ class CustomerRegistrationListener
 
     private function readValue($source, $key, $default = null)
     {
-        if (is_array($source)) {
-            return array_key_exists($key, $source) ? $source[$key] : $default;
+        if (is_object($source)) {
+            try {
+                $source = $source->toArray();
+            } catch (\Throwable $e) {
+                // no-op fallback
+            }
         }
 
-        if (is_object($source)) {
-            $objectValues = (array) $source;
+        $iterable = $this->asIterable($source);
 
-            if (array_key_exists($key, $objectValues)) {
-                return $objectValues[$key];
-            }
+        if (!empty($iterable)) {
+            return array_key_exists($key, $iterable) ? $iterable[$key] : $default;
+        }
 
-            foreach ($objectValues as $objectKey => $value) {
-                if (!is_string($objectKey)) {
-                    continue;
-                }
-
-                if (substr($objectKey, -strlen($key)) === $key) {
-                    return $value;
-                }
-            }
+        if (is_object($source) && isset($source->$key)) {
+            return $source->$key;
         }
 
         return $default;
@@ -321,15 +332,8 @@ class CustomerRegistrationListener
             return $value;
         }
 
-        if (is_object($value)) {
-            $items = [];
-            foreach ($value as $itemKey => $itemValue) {
-                $items[$itemKey] = $itemValue;
-            }
-
-            if (!empty($items)) {
-                return $items;
-            }
+        if ($value instanceof \Traversable) {
+            return iterator_to_array($value);
         }
 
         return [];

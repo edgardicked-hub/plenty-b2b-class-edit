@@ -312,14 +312,10 @@ class CustomerRegistrationListener
     private function getEmailTemplateId()
     {
         try {
-            if (function_exists('pluginApp')) {
-                /** @var \Plenty\Modules\Webshop\Helpers\PluginConfig $pluginConfig */
-                $pluginConfig = pluginApp('Plenty\\Modules\\Webshop\\Helpers\\PluginConfig');
+            /** @var \Plenty\Modules\Webshop\Helpers\PluginConfig $pluginConfig */
+            $pluginConfig = pluginApp('Plenty\\Modules\\Webshop\\Helpers\\PluginConfig');
 
-                if (is_object($pluginConfig) && method_exists($pluginConfig, 'getIntegerValue')) {
-                    return (int) $pluginConfig->getIntegerValue('emailTemplateId', 0);
-                }
-            }
+            return (int) $pluginConfig->getIntegerValue('emailTemplateId', 0);
         } catch (\Throwable $e) {
             $this->getLogger(__METHOD__)->warning('B2BClassEdit: PluginConfig unavailable, fallback to ConfigRepository', [
                 'message' => $e->getMessage(),

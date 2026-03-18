@@ -43,7 +43,7 @@ Das Plugin hört auf `AfterContactCreate`, `AfterContactUpdate` und zusätzlich 
 
 Treffen alle Bedingungen zu, wird `classId` von `sourceClassId` auf `targetClassId` gesetzt.
 
-Wenn zusätzlich `emailTemplateId > 0` konfiguriert ist, versendet das Plugin nach erfolgreicher Klassenänderung eine Plenty-Mailvorlage an die ermittelte Kontakt-E-Mail. Dafür werden an `EmailTemplatesSendServiceContract::sendEmail()` die Kontakt-bezogenen Daten `contactId`, `receiverEmail`, `lang` und – falls vorhanden – `plentyId` übergeben; zusätzlich versucht das Plugin die Plenty-Empfängerstruktur vorab per `getRecipient()` aufzulösen und als `receivers` mitzugeben.
+Wenn zusätzlich `emailTemplateId > 0` konfiguriert ist, bereitet das Plugin nach erfolgreicher Klassenänderung eine Plenty-Mailvorlage für die ermittelte Kontakt-E-Mail vor. Der eigentliche Versand wird dann auf das Plenty-Event `PluginSendMail` verschoben, damit der reguläre Registrierungs-Mailflow nicht blockiert oder beeinflusst wird. Dafür werden an `EmailTemplatesSendServiceContract::sendEmail()` die Kontakt-bezogenen Daten `contactId`, `receiverEmail`, `lang` und – falls vorhanden – `plentyId` übergeben; zusätzlich versucht das Plugin die Plenty-Empfängerstruktur vorab per `getRecipient()` aufzulösen und als `receivers` mitzugeben.
 
 ## Hinweis zum letzten Funktionsfix
 

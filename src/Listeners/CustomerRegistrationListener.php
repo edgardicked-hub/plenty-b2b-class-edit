@@ -20,6 +20,9 @@ class CustomerRegistrationListener
     /** @var array<int, bool> */
     private static $inProgress = [];
 
+    /** @var array<string, array{templateId:int,payload:array}> */
+    private static $pendingReleaseEmails = [];
+
     /** @var ContactRepositoryContract */
     private $contactRepository;
 
@@ -176,7 +179,7 @@ class CustomerRegistrationListener
                 'updated' => true,
             ]);
 
-            $this->sendReleaseEmailIfConfigured($contactId, $contact, $eventContact);
+            $this->queueReleaseEmailIfConfigured($contactId, $contact, $eventContact);
         } catch (\Throwable $e) {
             $this->getLogger(__METHOD__)->error('B2BClassEdit: processContactId crashed', [
                 'contactId' => $contactId,
@@ -325,7 +328,21 @@ class CustomerRegistrationListener
         return (int) $this->readConfigValue('emailTemplateId', 0);
     }
 
-    private function sendReleaseEmailIfConfigured($contactId, $contact, $eventContact)
+    public static function pullPendingReleaseEmail($email)
+    {
+        $email = strtolower(trim((string) $email));
+
+        if ($email === '' || !isset(self::$pendingReleaseEmails[$email])) {
+            return null;
+        }
+
+        $payload = self::$pendingReleaseEmails[$email];
+        unset(self::$pendingReleaseEmails[$email]);
+
+        return $payload;
+    }
+
+    private function queueReleaseEmailIfConfigured($contactId, $contact, $eventContact)
     {
         $templateId = $this->getEmailTemplateId();
 
@@ -345,23 +362,16 @@ class CustomerRegistrationListener
 
         $payload = $this->buildReleaseEmailPayload($contactId, $contact, $receiverEmail);
 
-        try {
-            $result = $this->emailTemplatesSendService->sendEmail($templateId, $payload);
+        self::$pendingReleaseEmails[strtolower($receiverEmail)] = [
+            'templateId' => $templateId,
+            'payload' => $payload,
+        ];
 
-            $this->getLogger(__METHOD__)->info('B2BClassEdit: release email sent', [
-                'contactId' => (int) $contactId,
-                'templateId' => $templateId,
-                'receiverEmail' => $receiverEmail,
-                'result' => is_array($result) ? $result : [],
-            ]);
-        } catch (\Throwable $e) {
-            $this->getLogger(__METHOD__)->error('B2BClassEdit: release email failed', [
-                'contactId' => (int) $contactId,
-                'templateId' => $templateId,
-                'receiverEmail' => $receiverEmail,
-                'message' => $e->getMessage(),
-            ]);
-        }
+        $this->getLogger(__METHOD__)->info('B2BClassEdit: release email queued until PluginSendMail event', [
+            'contactId' => (int) $contactId,
+            'templateId' => $templateId,
+            'receiverEmail' => $receiverEmail,
+        ]);
     }
 
     private function buildReleaseEmailPayload($contactId, $contact, $receiverEmail)

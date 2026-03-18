@@ -7,7 +7,6 @@ use Plenty\Modules\Account\Contact\Events\AfterContactCreate;
 use Plenty\Modules\Account\Contact\Events\AfterContactUpdate;
 use Plenty\Modules\Authentication\Events\AfterAccountAuthentication;
 use Plenty\Modules\Mail\Templates\Contracts\Service\EmailService\EmailTemplatesSendServiceContract;
-use Plenty\Modules\Webshop\Helpers\PluginConfig;
 use Plenty\Plugin\ConfigRepository;
 use Plenty\Plugin\Log\Loggable;
 
@@ -30,20 +29,15 @@ class CustomerRegistrationListener
     /** @var EmailTemplatesSendServiceContract */
     private $emailTemplatesSendService;
 
-    /** @var PluginConfig */
-    private $pluginConfig;
-
     public function __construct(
         ContactRepositoryContract $contactRepository,
         ConfigRepository $config,
-        EmailTemplatesSendServiceContract $emailTemplatesSendService,
-        PluginConfig $pluginConfig
+        EmailTemplatesSendServiceContract $emailTemplatesSendService
     )
     {
         $this->contactRepository = $contactRepository;
         $this->config = $config;
         $this->emailTemplatesSendService = $emailTemplatesSendService;
-        $this->pluginConfig = $pluginConfig;
     }
 
     public function handle($event)
@@ -317,7 +311,22 @@ class CustomerRegistrationListener
 
     private function getEmailTemplateId()
     {
-        return (int) $this->pluginConfig->getIntegerValue('emailTemplateId', 0);
+        try {
+            if (function_exists('pluginApp')) {
+                /** @var \Plenty\Modules\Webshop\Helpers\PluginConfig $pluginConfig */
+                $pluginConfig = pluginApp('Plenty\\Modules\\Webshop\\Helpers\\PluginConfig');
+
+                if (is_object($pluginConfig) && method_exists($pluginConfig, 'getIntegerValue')) {
+                    return (int) $pluginConfig->getIntegerValue('emailTemplateId', 0);
+                }
+            }
+        } catch (\Throwable $e) {
+            $this->getLogger(__METHOD__)->warning('B2BClassEdit: PluginConfig unavailable, fallback to ConfigRepository', [
+                'message' => $e->getMessage(),
+            ]);
+        }
+
+        return (int) $this->readConfigValue('emailTemplateId', 0);
     }
 
     private function sendReleaseEmailIfConfigured($contactId, $contact, $eventContact)

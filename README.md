@@ -31,6 +31,7 @@ Verfügbare Felder:
 - **API Benutzername** = `apiUsername` (optional)
 - **API Passwort** = `apiPassword` (optional)
 - **API Base-URL** = `apiBaseUrl` (optional, z. B. `https://deinshop.tld`)
+- **E-Mailvorlage ID für Freischaltung** = `emailTemplateId` (optional, Plenty-Mailvorlagen-ID; `0` = kein Versand)
 
 ## Verhalten
 
@@ -41,6 +42,8 @@ Das Plugin hört auf `AfterContactCreate`, `AfterContactUpdate` und zusätzlich 
 - E-Mail endet **nicht** auf `ebayEmailDomain`
 
 Treffen alle Bedingungen zu, wird `classId` von `sourceClassId` auf `targetClassId` gesetzt.
+
+Wenn zusätzlich `emailTemplateId > 0` konfiguriert ist, versendet das Plugin nach erfolgreicher Klassenänderung eine Plenty-Mailvorlage an die ermittelte Kontakt-E-Mail.
 
 ## Hinweis zum letzten Funktionsfix
 
@@ -67,6 +70,7 @@ Das Plugin schreibt jetzt Diagnose-Logs in Plenty (Logger-Kontext `CustomerRegis
 - Klasse passt nicht zur Quellklasse (Skip)
 - Gefundene VAT (maskiert)
 - Erfolgreiche Klassenänderung
+- Versand der Freischaltungs-Mail erfolgreich / fehlgeschlagen / übersprungen
 
 So kann man im Plenty-Log schnell sehen, an welcher Bedingung der Wechsel stoppt.
 

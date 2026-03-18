@@ -40,5 +40,12 @@
     "label": "API Base-URL (optional)",
     "type": "text",
     "defaultValue": ""
+  },
+  {
+    "tab": "Einstellungen",
+    "key": "emailTemplateId",
+    "label": "E-Mailvorlage ID für Freischaltung",
+    "type": "number",
+    "defaultValue": 0
   }
 ]

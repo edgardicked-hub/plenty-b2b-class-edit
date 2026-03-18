@@ -6,6 +6,7 @@ use Plenty\Modules\Account\Contact\Contracts\ContactRepositoryContract;
 use Plenty\Modules\Account\Contact\Events\AfterContactCreate;
 use Plenty\Modules\Account\Contact\Events\AfterContactUpdate;
 use Plenty\Modules\Authentication\Events\AfterAccountAuthentication;
+use Plenty\Modules\Mail\Templates\Contracts\Service\EmailService\EmailTemplatesSendServiceContract;
 use Plenty\Plugin\ConfigRepository;
 use Plenty\Plugin\Log\Loggable;
 
@@ -25,10 +26,18 @@ class CustomerRegistrationListener
     /** @var ConfigRepository */
     private $config;
 
-    public function __construct(ContactRepositoryContract $contactRepository, ConfigRepository $config)
+    /** @var EmailTemplatesSendServiceContract */
+    private $emailTemplatesSendService;
+
+    public function __construct(
+        ContactRepositoryContract $contactRepository,
+        ConfigRepository $config,
+        EmailTemplatesSendServiceContract $emailTemplatesSendService
+    )
     {
         $this->contactRepository = $contactRepository;
         $this->config = $config;
+        $this->emailTemplatesSendService = $emailTemplatesSendService;
     }
 
     public function handle($event)
@@ -166,6 +175,8 @@ class CustomerRegistrationListener
                 'vat' => $this->maskVat($vat),
                 'updated' => true,
             ]);
+
+            $this->sendReleaseEmailIfConfigured($contactId, $contact, $eventContact, $targetClassId);
         } catch (\Throwable $e) {
             $this->getLogger(__METHOD__)->error('B2BClassEdit: processContactId crashed', [
                 'contactId' => $contactId,
@@ -296,6 +307,61 @@ class CustomerRegistrationListener
     private function getTargetClassId()
     {
         return (int) $this->readConfigValue('targetClassId', self::DEFAULT_TARGET_CLASS_ID);
+    }
+
+    private function getEmailTemplateId()
+    {
+        return (int) $this->readConfigValue('emailTemplateId', 0);
+    }
+
+    private function sendReleaseEmailIfConfigured($contactId, $contact, $eventContact, $targetClassId)
+    {
+        $templateId = $this->getEmailTemplateId();
+
+        if ($templateId <= 0) {
+            return;
+        }
+
+        $receiverEmail = trim((string) $this->resolveEmail($contact, $eventContact));
+
+        if ($receiverEmail === '' || strpos($receiverEmail, '@') === false) {
+            $this->getLogger(__METHOD__)->warning('B2BClassEdit: release email skipped, no receiver email', [
+                'contactId' => (int) $contactId,
+                'templateId' => $templateId,
+            ]);
+            return;
+        }
+
+        $payload = [
+            'contactId' => (int) $contactId,
+            'entityType' => 'contact',
+            'entityId' => (int) $contactId,
+            'receiverEmail' => $receiverEmail,
+            'receiver' => $receiverEmail,
+            'recipient' => $receiverEmail,
+            'data' => [
+                'contactId' => (int) $contactId,
+                'classId' => (int) $targetClassId,
+            ],
+        ];
+
+        try {
+            $result = $this->emailTemplatesSendService->sendEmail($templateId, $payload);
+
+            $this->getLogger(__METHOD__)->info('B2BClassEdit: release email sent', [
+                'contactId' => (int) $contactId,
+                'templateId' => $templateId,
+                'receiverEmail' => $receiverEmail,
+                'result' => is_array($result) ? $result : [],
+            ]);
+        } catch (\Throwable $e) {
+            $this->getLogger(__METHOD__)->error('B2BClassEdit: release email failed', [
+                'contactId' => (int) $contactId,
+                'templateId' => $templateId,
+                'receiverEmail' => $receiverEmail,
+                'message' => $e->getMessage(),
+            ]);
+        }
     }
 
     private function isValidPayload($value)

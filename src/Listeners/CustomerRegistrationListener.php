@@ -381,6 +381,20 @@ class CustomerRegistrationListener
             $payload['plentyId'] = $plentyId;
         }
 
+        try {
+            $receivers = $this->emailTemplatesSendService->getRecipient($payload);
+
+            if (!empty($receivers)) {
+                $payload['receivers'] = $receivers;
+            }
+        } catch (\Throwable $e) {
+            $this->getLogger(__METHOD__)->warning('B2BClassEdit: could not resolve mail receivers', [
+                'contactId' => (int) $contactId,
+                'receiverEmail' => $receiverEmail,
+                'message' => $e->getMessage(),
+            ]);
+        }
+
         return $payload;
     }
 

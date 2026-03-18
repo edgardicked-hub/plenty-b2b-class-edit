@@ -7,6 +7,7 @@ use Plenty\Modules\Account\Contact\Events\AfterContactCreate;
 use Plenty\Modules\Account\Contact\Events\AfterContactUpdate;
 use Plenty\Modules\Authentication\Events\AfterAccountAuthentication;
 use Plenty\Modules\Mail\Templates\Contracts\Service\EmailService\EmailTemplatesSendServiceContract;
+use Plenty\Modules\Webshop\Helpers\PluginConfig;
 use Plenty\Plugin\ConfigRepository;
 use Plenty\Plugin\Log\Loggable;
 
@@ -29,15 +30,20 @@ class CustomerRegistrationListener
     /** @var EmailTemplatesSendServiceContract */
     private $emailTemplatesSendService;
 
+    /** @var PluginConfig */
+    private $pluginConfig;
+
     public function __construct(
         ContactRepositoryContract $contactRepository,
         ConfigRepository $config,
-        EmailTemplatesSendServiceContract $emailTemplatesSendService
+        EmailTemplatesSendServiceContract $emailTemplatesSendService,
+        PluginConfig $pluginConfig
     )
     {
         $this->contactRepository = $contactRepository;
         $this->config = $config;
         $this->emailTemplatesSendService = $emailTemplatesSendService;
+        $this->pluginConfig = $pluginConfig;
     }
 
     public function handle($event)
@@ -176,7 +182,7 @@ class CustomerRegistrationListener
                 'updated' => true,
             ]);
 
-            $this->sendReleaseEmailIfConfigured($contactId, $contact, $eventContact, $targetClassId);
+            $this->sendReleaseEmailIfConfigured($contactId, $contact, $eventContact);
         } catch (\Throwable $e) {
             $this->getLogger(__METHOD__)->error('B2BClassEdit: processContactId crashed', [
                 'contactId' => $contactId,
@@ -311,10 +317,10 @@ class CustomerRegistrationListener
 
     private function getEmailTemplateId()
     {
-        return (int) $this->readConfigValue('emailTemplateId', 0);
+        return (int) $this->pluginConfig->getIntegerValue('emailTemplateId', 0);
     }
 
-    private function sendReleaseEmailIfConfigured($contactId, $contact, $eventContact, $targetClassId)
+    private function sendReleaseEmailIfConfigured($contactId, $contact, $eventContact)
     {
         $templateId = $this->getEmailTemplateId();
 
@@ -332,18 +338,7 @@ class CustomerRegistrationListener
             return;
         }
 
-        $payload = [
-            'contactId' => (int) $contactId,
-            'entityType' => 'contact',
-            'entityId' => (int) $contactId,
-            'receiverEmail' => $receiverEmail,
-            'receiver' => $receiverEmail,
-            'recipient' => $receiverEmail,
-            'data' => [
-                'contactId' => (int) $contactId,
-                'classId' => (int) $targetClassId,
-            ],
-        ];
+        $payload = $this->buildReleaseEmailPayload($contactId, $contact, $receiverEmail);
 
         try {
             $result = $this->emailTemplatesSendService->sendEmail($templateId, $payload);
@@ -362,6 +357,26 @@ class CustomerRegistrationListener
                 'message' => $e->getMessage(),
             ]);
         }
+    }
+
+    private function buildReleaseEmailPayload($contactId, $contact, $receiverEmail)
+    {
+        $payload = [
+            'contactId' => (int) $contactId,
+            'receiverEmail' => $receiverEmail,
+        ];
+
+        $lang = trim((string) $this->readValue($contact, 'lang', ''));
+        if ($lang !== '') {
+            $payload['lang'] = $lang;
+        }
+
+        $plentyId = (int) $this->readValue($contact, 'plentyId', 0);
+        if ($plentyId > 0) {
+            $payload['plentyId'] = $plentyId;
+        }
+
+        return $payload;
     }
 
     private function isValidPayload($value)
